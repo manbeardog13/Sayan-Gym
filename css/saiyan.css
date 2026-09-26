@@ -175,7 +175,9 @@ a.hstat b{color:var(--ink)} a.hstat b.g{color:var(--green-ink)}
 .row b{white-space:nowrap}
 .hero .act.top{grid-column:2;grid-row:1}
 .hero .act.bottom{grid-column:2;grid-row:2}
-@media(max-width:900px){ .hero .act.top,.hero .act.bottom{grid-column:auto;grid-row:auto} }
+@media(max-width:900px){ .hero .act.top,.hero .act.bottom{grid-column:auto;grid-row:auto}
+  .hero .act.top{order:1} .hero .slot-a{order:2} .hero .act.bottom{order:3} .hero .stage{order:4} .hero .slot-b{order:5} }
+.wm.is-idle{display:none}
 .toggle-row label{text-transform:none;letter-spacing:0;font:500 13.5px/1.45 Inter;color:var(--ink);margin:0}
 
 /* ---------- review fixes (accessibility pass 1) ---------- */

@@ -333,7 +333,7 @@ async function viewLanding() {
         <a class="spill" href="#visit"><b>300+</b><span>kg ${esc(L("na šipci", "on the bar"))}</span></a>
         <a class="spill" href="${cfg.gym.maps}" target="_blank" rel="noopener"><b>4.8</b><span>Google · 200+</span></a>
       </div>
-      <span class="tab-corner">${esc(L("uživo · Lapad", "live · Lapad"))}</span>
+      <span class="tab-corner">${esc(open ? L("uživo · Lapad", "live · Lapad") : "Lapad")}</span>
     </div>
 
     <a class="act gold top reveal" href="${esc(buyHref)}" target="_blank" rel="noopener" style="animation-delay:150ms">
@@ -341,14 +341,14 @@ async function viewLanding() {
       <span class="go" aria-hidden="true">${ICO.arrow}</span>
       <span class="tab-tl">${esc(L("dnevna karta", "day pass"))}</span>
       <div class="body"><div class="eyebrow"><span class="led"></span>18 € · ${esc(L("ručnik", "towel"))} 3 €</div>
-        <h2>${esc(t("hero_cta"))}</h2><div class="desc">${esc(t("towel_note"))}</div></div>
+        <h2>${esc(settings.payment_url ? t("hero_cta") : "WhatsApp")}</h2><div class="desc">${esc(t("towel_note"))}</div></div>
     </a>
 
     <a class="act green bottom reveal" href="${state.session ? "#/app" : "#/login"}" style="animation-delay:190ms">
       <span class="bg" style="background-image:url('assets/log.webp')"></span>
       <span class="go" aria-hidden="true">${ICO.arrow}</span>
-      <span class="tab-tl">${esc(L("aplikacija", "app"))}</span>
-      <div class="body"><div class="eyebrow"><span class="led"></span>Power Level</div>
+      <span class="tab-tl">${esc(state.session ? L("aplikacija", "app") : t("sign_in"))}</span>
+      <div class="body"><div class="eyebrow"><span class="led"></span>${esc(state.session ? "Power Level" : t("sign_in"))}</div>
         <h2>${esc(t("hero_cta2"))}</h2><div class="desc">${esc(t("login_sub"))}</div></div>
     </a>
 
@@ -421,10 +421,11 @@ async function viewLogin() {
   <main class="auth-card">
     <div class="auth-top">
       <a href="#/site" aria-label="Saiyan FITT — početna / home">${WORDMARK.replace('class="logo wordmark"', 'class="auth-logo wordmark"').replace('id="wmg"', 'id="wmg-auth"').replace("url(#wmg)", "url(#wmg-auth)")}</a>
+      <a class="auth-home" href="#/site">${esc(t("nav_home"))}</a>
       <button class="auth-theme" id="theme" type="button" role="switch" aria-checked="${document.documentElement.classList.contains("dark")}" aria-label="${L("Tamna tema", "Dark theme")}"><i></i></button>
     </div>
-    <h1 class="auth-title">${esc(t("login_title"))}</h1>
-    <p class="auth-sub">Saiyan Gym FITT · Lapad, Dubrovnik</p>
+    <h1 class="auth-title">${esc(t("sign_in"))}</h1>
+    <p class="auth-sub">${esc(t("login_sub"))}</p>
     <button class="btn-google" id="g-btn" type="button">${ICO.google} ${esc(t("google"))}</button>
     <div class="auth-div">${esc(t("or_email"))}</div>
     <label class="fieldx f-email"><span class="fx-ic">${ICO.mail}</span>
@@ -433,7 +434,7 @@ async function viewLogin() {
     <p class="auth-msg" id="login-msg" role="status" aria-live="polite"></p>
     <p class="auth-legal">${esc(t("login_legal"))}</p>
     <p class="auth-switch" id="lq" style="transition:opacity .4s">„${esc(quotes.length ? quoteText(quotes[0]) : "")}”</p>
-    <p class="auth-switch" style="font-size:11.5px;margin-top:6px"><button type="button" id="auth-lang">${LANG === "hr" ? "English" : "Hrvatski"}</button> · <a href="#/site" style="color:inherit">${esc(t("nav_home"))}</a></p>
+    <p class="auth-switch" style="font-size:14px;margin-top:6px"><button type="button" id="auth-lang">${LANG === "hr" ? "English" : "Hrvatski"}</button></p>
   </main>`;
   document.getElementById("theme").onclick = toggleTheme;
   document.getElementById("auth-lang").onclick = () => { setLang(LANG === "hr" ? "en" : "hr"); route(); };
@@ -566,7 +567,7 @@ async function viewDashboard() {
       <h3>${esc(t("today_title"))} <span class="count-badge">${plan.list.length}</span></h3>
       <p class="plan-meta">${esc(t("focus"))}: ${esc(plan.focus.map(muscle).join(" + "))} · ${plan.scheme.sets} × ${plan.scheme.reps} · ${esc(L(plan.scheme.hr, plan.scheme.en))}</p>
       ${plan.list.map(({ e, target }) => `<div class="plan-row"><span>${esc(nameOf(e))}</span><b>${target ? `${fmtKg(target.suggest_load)} × ${target.suggest_reps}` : `${plan.scheme.sets} × ${plan.scheme.reps}`}</b></div>`).join("")}
-      ${targets.length === 0 ? `<p class="plan-meta" style="margin-top:12px">${esc(t("today_empty"))}</p>` : ""}
+      ${plan.list.length === 0 ? `<p class="plan-meta" style="margin-top:12px">${esc(t("today_empty"))}</p>` : ""}
     </section>
 
     <section class="card slot-b reveal" style="animation-delay:270ms">
@@ -604,7 +605,7 @@ async function viewDashboard() {
       <span class="tab-tl">${esc(L("povijest", "history"))}</span>
       <h3>${esc(t("history"))} <span class="count-badge">${(hist.data || []).length}</span></h3>
       ${(hist.data || []).map((w) => `<a class="mini" href="#/progress"><time>${fmtDate(w.performed_on)}</time><b>${esc(L("Trening", "Workout"))}</b><span class="pl">${w.workout_sets[0]?.count ?? 0} ${esc(t("sets"))}</span></a>`).join("")
-        || `<p class="plan-meta">${esc(t("today_empty"))}</p>`}
+        || `<p class="plan-meta">${esc(t("history_empty"))}</p>`}
     </div>
   </section>
   ${bells}
@@ -637,13 +638,18 @@ async function viewDashboard() {
    WORKOUT LOGGER
    ========================================================= */
 async function viewLog() {
-  const [ex, tg, hist] = await Promise.all([
+  const [ex, tg, hist, rc] = await Promise.all([
     loadExercises(), sb.rpc("my_next_targets"),
     sb.from("workouts").select("id, performed_on, workout_sets(count)").eq("user_id", state.session.user.id).order("performed_on", { ascending: false }).limit(10),
+    sb.rpc("my_recovery"),
   ]);
   if (tg.error) return fail(tg.error);
   const targets = Object.fromEntries((tg.data || []).map((x) => [x.exercise_id, x]));
-  const blocks = []; // {exercise_id, sets:[{load,reps,rpe}]}
+  const plan = buildTodayPlan(ex, rc.data || [], tg.data || [], state.profile);
+  const blocks = plan.list.map(({ e, target }) => ({
+    exercise_id: e.id,
+    sets: [{ load: target ? target.suggest_load : "", reps: target ? target.suggest_reps : "", rpe: "" }],
+  }));
 
   $view.innerHTML = `
   <div class="page">
@@ -663,7 +669,7 @@ async function viewLog() {
       <section class="card span-4">
         <h2>${esc(t("history"))}</h2>
         ${(hist.data || []).map((w) => `<div class="row"><span>${fmtDate(w.performed_on)}</span><span class="muted">${w.workout_sets[0]?.count ?? 0} ${esc(t("sets"))}</span></div>`).join("")
-          || `<p class="muted">${esc(t("today_empty"))}</p>`}
+          || `<p class="muted">${esc(t("history_empty"))}</p>`}
       </section>
     </div>
   </div>`;
@@ -691,6 +697,8 @@ async function viewLog() {
         <button class="btn btn-ghost btn-sm" data-add="${bi}" type="button">+ ${esc(t("add_set"))}</button>
       </div>`;
     }).join("");
+    const wm = document.getElementById("wm");
+    if (wm) wm.classList.toggle("is-idle", !blocks.some((b) => b.sets.some((s) => s.done)));
   };
 
   document.getElementById("ex-pick").onchange = (e) => {
@@ -717,6 +725,7 @@ async function viewLog() {
     if (d.rmb != null) { blocks.splice(d.rmb, 1); draw(); }
     if (d.rms != null) { const [b, s] = d.rms.split(":"); blocks[b].sets.splice(s, 1); if (!blocks[b].sets.length) blocks.splice(b, 1); draw(); }
   });
+  draw();
   document.getElementById("save").onclick = async (ev) => {
     const rows = [];
     blocks.forEach((b) => b.sets.forEach((s, i) => {
@@ -767,17 +776,23 @@ async function viewProgress() {
     if (!pts.length) return (box.innerHTML = `<p class="muted">${esc(t("no_data"))}</p>`);
     const W = Math.max(300, Math.round(box.clientWidth || 640)), H = W < 500 ? 200 : 240, P = W < 500 ? 30 : 36;
     const ys = pts.map((p) => p[1]), min = Math.min(...ys) * 0.95, max = Math.max(...ys) * 1.05;
+    const prev = pts.length > 1 ? pts.at(-2)[1] : null, last = ys.at(-1);
+    const trend = prev == null ? "" : last > prev + 0.5
+      ? L("Jače od prošlog puta.", "Stronger than last time.")
+      : last < prev - 0.5 ? L("Slabije od prošlog puta.", "Lighter than last time.")
+      : L("Isto kao prošli put.", "Same as last time.");
     const x = (i) => P + (pts.length === 1 ? (W - 2 * P) / 2 : (i * (W - 2 * P)) / (pts.length - 1));
     const y = (v) => H - P - ((v - min) / (max - min || 1)) * (H - 2 * P);
     box.innerHTML = `
-      <h2 class="bigstat">${fmtKg(Math.round(ys.at(-1)))}<em>${esc(t("e1rm"))}</em></h2>
+      <h2 class="bigstat">${fmtKg(Math.round(ys.at(-1)))}<em>${esc(t("e1rm"))} · ${esc(L("zadnji", "latest"))}</em></h2>
+      ${trend ? `<p class="plan-meta">${esc(trend)} ${esc(fmtDate(pts.at(-1)[0]))}</p>` : ""}
       <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("e1rm"))}">
         <line class="axis" x1="${P}" y1="${H - P}" x2="${W - P}" y2="${H - P}"/>
         <polyline class="line" points="${pts.map((p, i) => `${x(i)},${y(p[1])}`).join(" ")}"/>
         ${pts.map((p, i) => `<circle class="dot" cx="${x(i)}" cy="${y(p[1])}" r="5"><title>${p[0]}: ${Math.round(p[1])} kg</title></circle>`).join("")}
         <text x="${P}" y="${H - 10}">${fmtDate(pts[0][0])}</text>
         <text x="${W - P}" y="${H - 10}" text-anchor="end">${fmtDate(pts.at(-1)[0])}</text>
-        <text x="${P}" y="${y(max / 1.05) - 8}">${Math.round(max / 1.05)} kg</text>
+        <text x="${P}" y="${y(Math.max(...ys)) - 8}">${esc(L("najviše", "best"))} ${Math.round(Math.max(...ys))} kg</text>
       </svg>`;
   };
   const { data: top } = await sb.from("workout_sets").select("exercise_id, workouts!inner(user_id)").eq("workouts.user_id", state.session.user.id).limit(500);
@@ -807,9 +822,10 @@ async function viewProfile() {
       <button class="btn btn-ghost" id="so" type="button">${esc(t("sign_out"))}</button></div>
     <div class="grid">
       <section class="card span-6">
-        <h2>${esc(p.display_name || "")}</h2>
         <p class="muted small">${esc(state.session.user.email)}</p>
+        <p class="small">${esc(L("Karta je pod Moj trening — „Moja karta”.", "Your pass is under My training — “My pass”."))}</p>
         <div class="form-grid">
+          <div><label for="nm">${esc(L("Ime", "Name"))}</label><input id="nm" value="${esc(p.display_name || "")}" autocomplete="name"></div>
           <div><label for="goal">${esc(t("goal"))}</label><select id="goal"><option value=""></option>${opt("goal", ["strength", "hypertrophy", "fat_loss", "general"], p.goal)}</select></div>
           <div><label for="exp">${esc(t("experience"))}</label><select id="exp"><option value=""></option>${opt("exp", ["beginner", "intermediate", "advanced"], p.experience)}</select></div>
         </div>
@@ -847,7 +863,7 @@ async function viewProfile() {
 
   document.getElementById("so").onclick = signOut;
   document.getElementById("save-p").onclick = async () => {
-    const upd = { goal: document.getElementById("goal").value || null, experience: document.getElementById("exp").value || null };
+    const upd = { display_name: document.getElementById("nm").value.trim() || null, goal: document.getElementById("goal").value || null, experience: document.getElementById("exp").value || null };
     const { error } = await sb.from("profiles").update(upd).eq("id", state.session.user.id);
     if (error) return fail(error);
     Object.assign(state.profile, upd); toast(t("saved_ok"));

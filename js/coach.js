@@ -73,7 +73,7 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 const restFor = (ex) => coachPrefs.rest || (ex?.is_compound ? 150 : 90);
 
 function workoutBarHtml() {
-  return `<div class="wm" id="wm" role="timer" aria-live="off">
+  return `<div class="wm is-idle" id="wm" role="timer" aria-live="off">
     <div class="wm-main">
       <span class="wm-label">${esc(L("Odmor", "Rest"))}</span>
       <b id="wm-time">0:00</b>
