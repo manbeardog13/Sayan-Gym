@@ -312,7 +312,8 @@ function wireStream() {
   const scroller = document.querySelector(".stream");
   if (!scroller || scroller.dataset.wired) return;
   scroller.dataset.wired = "1";
-  let down = false, moved = false, startX = 0, lastX = 0, lastT = 0, vx = 0, raf = 0, pressSlide = null;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let down = false, moved = false, startX = 0, startY = 0, lastX = 0, lastT = 0, vx = 0, raf = 0, pressSlide = null;
   const openSlide = (slide) => {
     const dlg = document.createElement("dialog");
     dlg.className = "photo-dlg";
@@ -332,7 +333,7 @@ function wireStream() {
     if (e.button != null && e.button !== 0) return;
     down = true; moved = false; vx = 0;
     pressSlide = e.target.closest(".slide");
-    startX = lastX = e.clientX; lastT = performance.now();
+    startX = lastX = e.clientX; startY = e.clientY; lastT = performance.now();
     cancelAnimationFrame(raf);
     scroller.setPointerCapture(e.pointerId);
   });
@@ -340,24 +341,24 @@ function wireStream() {
     if (!down) return;
     const now = performance.now();
     const dx = e.clientX - lastX;
-    if (Math.abs(e.clientX - startX) > 6) moved = true;
+    if (Math.hypot(e.clientX - startX, e.clientY - startY) > 6) moved = true;
     scroller.scrollLeft -= dx;
     const dt = Math.max(8, now - lastT);
     vx = dx / dt * 16;
     lastX = e.clientX; lastT = now;
   });
-  const end = () => {
+  const release = (open) => {
     if (!down) return;
     const slide = pressSlide;
-    const tap = !moved && slide;
+    const tap = open && !moved && slide;
     down = false;
-    raf = requestAnimationFrame(coast);
+    if (!reduce) raf = requestAnimationFrame(coast);
     if (tap) openSlide(slide);
   };
-  scroller.addEventListener("pointerup", end);
-  scroller.addEventListener("pointercancel", end);
+  scroller.addEventListener("pointerup", () => release(true));
+  scroller.addEventListener("pointercancel", () => release(false));
   scroller.addEventListener("wheel", (e) => {
-    if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+    if (reduce || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
     e.preventDefault();
     cancelAnimationFrame(raf);
     vx = e.deltaY * 0.55;
@@ -1484,10 +1485,13 @@ const ROUTES = {
 const PROTECTED = new Set(["#/app", "#/log", "#/progress", "#/profile", "#/desk", "#/admin", "#/studio", "#/ideas"]);
 
 const navTrail = [];
+let navPop = false;
+window.addEventListener("popstate", () => { navPop = true; });
 async function route() {
   let h = location.hash.split("?")[0] || "#/";
   if (!ROUTES[h]) h = "#/";
-  const back = navTrail.length > 1 && navTrail[navTrail.length - 2] === h;
+  const back = navPop && navTrail.length > 1 && navTrail[navTrail.length - 2] === h;
+  navPop = false;
   if (back) navTrail.pop();
   else if (navTrail[navTrail.length - 1] !== h) navTrail.push(h);
   delete document.documentElement.dataset.nav;
