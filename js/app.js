@@ -459,10 +459,20 @@ async function viewLogin() {
     const b = document.getElementById("ml-btn"); b.disabled = true;
     const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
     b.disabled = false;
-    error ? msg(error.message, true) : msg(t("link_sent"));
+    error ? msg(mailFail(error), true) : msg(t("link_sent"));
   };
   document.getElementById("ml-btn").onclick = send;
   document.getElementById("em").onkeydown = (e) => e.key === "Enter" && send();
+}
+
+function mailFail(error) {
+  const m = String(error?.message || "").toLowerCase();
+  if (m.includes("error sending") || m.includes("smtp") || m.includes("rate limit") || m.includes("over_email_send_rate_limit")) {
+    return L(
+      "Slanje e-pošte još nije uključeno. Zrinko to uključuje u Postavkama, službenim Gmailom teretane.",
+      "Email sending is not switched on yet. Zrinko turns it on in Settings, with the gym's official Gmail.");
+  }
+  return error.message;
 }
 
 /* =========================================================
@@ -960,18 +970,43 @@ async function viewDesk() {
    ========================================================= */
 async function viewAdmin() {
   if (!isAdmin()) { $view.innerHTML = `<div class="page"><p>${esc(t("staff_only"))}</p></div>`; return; }
-  const [plans, facts, quotes, settings, photos] = await Promise.all([
+  const [plans, facts, quotes, settings, photos, wireRes] = await Promise.all([
     sb.from("membership_plans").select("*").order("sort"),
     sb.from("gym_facts").select("id, topic, questions, content_hr, content_en").order("topic"),
     sb.from("motivation").select("*").order("id"),
     loadSettings(), listGallery(),
+    sb.functions.invoke("gym-wire", { body: { action: "status" } }),
   ]);
+  const wire = wireRes?.data && !wireRes.data.error ? wireRes.data : null;
   for (const r of [plans, facts, quotes]) if (r.error) return fail(r.error);
 
   $view.innerHTML = `
   <div class="page">
     <div class="phead"><div><h1>${esc(t("admin_title"))}</h1><p class="muted">${esc(t("admin_intro"))}</p></div></div>
     <div class="grid">
+
+      <section class="card span-12" aria-labelledby="amail">
+        <h2 id="amail">${esc(L("Službena e-pošta teretane", "Official gym email"))}</h2>
+        <p class="muted small">${esc(L(
+          "Ovdje Zrinko upisuje službeni Gmail teretane i zaporku aplikacije (Google račun → Sigurnost → Zaporke aplikacija). Lozinka se ne sprema u aplikaciju. Supabase je odmah počne koristiti za prijave članova.",
+          "Zrinko enters the gym's official Gmail and an app password here (Google Account → Security → App passwords). The password is not stored in the app. Supabase starts using it for member sign-in immediately."))}</p>
+        <p class="small" id="mail-status">${esc(wire?.wired
+          ? L("Slanje ide s ", "Sending from ") + (wire.email || "")
+          : L("Slanje e-pošte još nije uključeno.", "Email sending is not switched on yet."))}${wire?.gemini ? esc(L(" Studio je uključen.", " Studio is on.")) : esc(L(" Studio još nije uključen.", " Studio is not on yet."))}</p>
+        <div class="form-grid">
+          <div><label for="gym-mail">${esc(L("Službeni Gmail", "Official Gmail"))}</label>
+            <input id="gym-mail" type="email" inputmode="email" autocomplete="off" placeholder="ime@gmail.com" value="${esc(wire?.email || "")}"></div>
+          <div><label for="gym-sender">${esc(L("Ime pošiljatelja", "Sender name"))}</label>
+            <input id="gym-sender" autocomplete="off" value="${esc(wire?.sender || "Saiyan Gym FITT")}"></div>
+        </div>
+        <div class="form-grid" style="margin-top:8px">
+          <div><label for="gym-app-pw">${esc(L("Zaporka aplikacije", "App password"))}</label>
+            <input id="gym-app-pw" type="password" autocomplete="new-password" placeholder="${esc(L("16 slova", "16 letters"))}"></div>
+          <div><label for="gym-gemini">${esc(L("Gemini ključ za Studio (neobavezno)", "Gemini key for Studio (optional)"))}</label>
+            <input id="gym-gemini" type="password" autocomplete="new-password" placeholder="AIza…"></div>
+        </div>
+        <button class="btn btn-primary btn-sm" id="save-mail" type="button" style="margin-top:10px">${esc(L("Uključi slanje", "Turn on sending"))}</button>
+      </section>
 
       <section class="card span-12" aria-labelledby="ap">
         <h2 id="ap">${esc(t("a_prices"))}</h2>
@@ -1077,6 +1112,35 @@ async function viewAdmin() {
       code: "plan-" + Date.now().toString(36), kind: "multi", name_hr: "Novi paket", name_en: "New package",
       is_published: false, sort: plans.data.length + 1 });
     error ? fail(error) : viewAdmin();
+  };
+
+  document.getElementById("save-mail").onclick = async () => {
+    const email = document.getElementById("gym-mail").value.trim();
+    const app_password = document.getElementById("gym-app-pw").value;
+    const sender_name = document.getElementById("gym-sender").value.trim();
+    const gemini_key = document.getElementById("gym-gemini").value.trim();
+    if (!email && !app_password && !gemini_key) return;
+    const btn = document.getElementById("save-mail");
+    btn.disabled = true;
+    const { data, error } = await sb.functions.invoke("gym-wire", { body: { email, app_password, sender_name, gemini_key } });
+    btn.disabled = false;
+    const code = data?.error || (await error?.context?.json?.().catch(() => ({})))?.error;
+    if (error || code) {
+      const say = {
+        gmail: L("Mora biti službeni @gmail.com teretane, ne osobni.", "It has to be the gym's official @gmail.com, not a personal one."),
+        app_password: L("Zaporka aplikacije ima 16 slova. Google je pokaže samo jednom.", "An app password is 16 letters. Google shows it only once."),
+        gemini: L("Gemini ključ ne izgleda ispravno.", "That Gemini key does not look valid."),
+        not_configured: L("Povezivanje još nije spremno.", "Wiring is not ready yet."),
+        smtp: L("Supabase nije prihvatio tu Gmail zaporku. Provjeri zaporku aplikacije.", "Supabase did not accept that Gmail password. Check the app password."),
+        gemini_save: L("Gemini ključ nije spremljen.", "The Gemini key was not saved."),
+        admin: L("Samo administrator može ovo uključiti.", "Only an admin can turn this on."),
+      }[code];
+      return toast(say || t("error"), 6000);
+    }
+    document.getElementById("gym-app-pw").value = "";
+    document.getElementById("gym-gemini").value = "";
+    toast(t("saved_ok"));
+    viewAdmin();
   };
 
   document.getElementById("save-pay").onclick = async () => {

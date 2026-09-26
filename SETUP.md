@@ -48,6 +48,8 @@ Nothing below is required to launch. Everything shows sensible placeholders unti
 | Gym photos | Gym photos | Gallery section stays hidden |
 | "Ask the gym" answers | "Ask the gym" answers | Uses the verified facts from research |
 | Motivational lines | Motivational lines | 10 lines in the gym's voice |
+| Official gym Gmail and app password | Official gym email | Member email-link sign-in stays off |
+| Gemini key | Official gym email | Studio stays "not switched on" |
 
 Edited answers are re-learned automatically on the next question.
 
