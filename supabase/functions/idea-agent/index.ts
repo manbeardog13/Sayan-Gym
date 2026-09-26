@@ -64,6 +64,35 @@ const SCHEMA = {
   required: ["reply", "ready"],
 };
 
+const BUG = `This conversation is a BUG REPORT, not an idea. Find out, one question at a time: which screen, what he did
+step by step, what he expected, what happened instead (exact text of any error), phone or computer and which browser/app,
+whether it happens every time, and since when. Put the steps in "behaviour" and expected-vs-actual in "problem";
+"acceptance" says how to confirm it is fixed. Title starts with "Bug: ".`;
+
+const CAPTION = `You write Instagram captions for Saiyan Gym FITT, a strength gym in Lapad, Dubrovnik (owner/coach Zrinko).
+Voice: confident, warm, motivating, no cringe, no fake claims, no prices unless given. Max ~900 characters.
+Write the caption in the requested language(s); when both, Croatian first, then a blank line and English.
+End with 5-12 relevant hashtags (mix Croatian/English/local: #dubrovnik #lapad #teretana #gym ...), max 30.
+Never include members' names or personal data. Return JSON {caption:string}.`;
+
+async function gemini(key: string, system: string, contents: unknown[], schema: unknown, temperature = 0.4) {
+  const model = Deno.env.get("GEMINI_MODEL") ?? "gemini-2.5-flash";
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents,
+      generationConfig: { temperature, maxOutputTokens: 2048, responseMimeType: "application/json", responseSchema: schema },
+    }),
+  });
+  if (r.status === 429) return { error: "model_busy" as const };
+  if (!r.ok) { console.error("gemini", r.status, await r.text()); return { error: "model" as const }; }
+  const out = await r.json();
+  const raw = out?.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
+  try { return { data: JSON.parse(raw) }; } catch { return { data: { reply: raw } }; }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "method" }, 405);
@@ -71,6 +100,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const text = String(body.message ?? "").trim().slice(0, 2000);
     if (!text) return json({ error: "empty" }, 400);
+    const kind = body.kind === "bug" ? "bug" : "idea";
 
     const url = Deno.env.get("SUPABASE_URL")!;
     const svc = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -84,14 +114,27 @@ Deno.serve(async (req) => {
     const key = Deno.env.get("GEMINI_API_KEY");
     if (!key) return json({ error: "not_configured" }, 503);
 
+    // caption helper for the post studio (stateless, counts toward the daily limit via a log row)
+    if (body.action === "caption") {
+      const langs = ["hr", "en", "both"].includes(body.lang) ? body.lang : "both";
+      const tone = String(body.tone ?? "motivating").slice(0, 40);
+      const res = await gemini(key, CAPTION,
+        [{ role: "user", parts: [{ text: `Language: ${langs}. Tone: ${tone}. What the post is about: ${text}` }] }],
+        { type: "object", properties: { caption: { type: "string" } }, required: ["caption"] }, 0.8);
+      if ("error" in res) return json({ error: res.error }, res.error === "model_busy" ? 429 : 502);
+      return json({ caption: String(res.data.caption ?? "").slice(0, 2200) });
+    }
+
     // thread: continue an own drafting thread or start a new one
     let threadId: string | null = body.thread_id ?? null;
+    let threadKind = kind;
     if (threadId) {
-      const { data: th } = await svc.from("idea_threads").select("id, author_id, status").eq("id", threadId).single();
+      const { data: th } = await svc.from("idea_threads").select("id, author_id, status, kind").eq("id", threadId).single();
       if (!th || th.author_id !== uid) return json({ error: "thread" }, 404);
       if (th.status !== "drafting") return json({ error: "locked" }, 409);
+      threadKind = th.kind;
     } else {
-      const { data: th, error } = await svc.from("idea_threads").insert({ author_id: uid, title: text.slice(0, 80) }).select("id").single();
+      const { data: th, error } = await svc.from("idea_threads").insert({ author_id: uid, kind, title: text.slice(0, 80) }).select("id, kind").single();
       if (error) throw error;
       threadId = th.id;
     }
@@ -111,22 +154,9 @@ Deno.serve(async (req) => {
     const contents = [...(hist ?? []), { role: "user", content: text }].map((m: { role: string; content: string }) => ({
       role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }],
     }));
-    const model = Deno.env.get("GEMINI_MODEL") ?? "gemini-2.5-flash";
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM }] },
-        contents,
-        generationConfig: { temperature: 0.4, maxOutputTokens: 2048, responseMimeType: "application/json", responseSchema: SCHEMA },
-      }),
-    });
-    if (r.status === 429) return json({ error: "model_busy" }, 429);
-    if (!r.ok) { console.error("gemini", r.status, await r.text()); return json({ error: "model" }, 502); }
-    const out = await r.json();
-    const raw = out?.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
-    let parsed: { reply?: string; ready?: boolean; brief?: Record<string, unknown> | null };
-    try { parsed = JSON.parse(raw); } catch { parsed = { reply: raw, ready: false }; }
+    const res = await gemini(key, threadKind === "bug" ? `${SYSTEM}\n\n${BUG}` : SYSTEM, contents, SCHEMA);
+    if ("error" in res) return json({ error: res.error }, res.error === "model_busy" ? 429 : 502);
+    const parsed = res.data as { reply?: string; ready?: boolean; brief?: Record<string, unknown> | null };
     const reply = String(parsed.reply ?? "").slice(0, 4000) || "…";
 
     await svc.from("idea_messages").insert([

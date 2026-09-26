@@ -156,3 +156,81 @@ begin
   update public.profiles set role = 'admin' where id = auth.uid();
   return true;
 end $$;
+
+-- =====================================================================
+-- Studio (migration: studio_posts)
+-- Threads can be ideas or bug reports; posts are member news and/or
+-- Instagram posts composed in the app.
+-- =====================================================================
+alter table public.idea_threads add column if not exists kind text not null default 'idea'
+  check (kind in ('idea','bug'));
+
+create table public.posts (
+  id uuid primary key default gen_random_uuid(),
+  author_id uuid not null references auth.users(id) on delete cascade default auth.uid(),
+  caption text not null default '' check (length(caption) <= 2200),
+  title text not null default '' check (length(title) <= 120),       -- members news headline
+  images text[] not null default '{}' check (cardinality(images) <= 10), -- paths in bucket "posts"
+  aspect text not null default '4:5' check (aspect in ('1:1','4:5','1.91:1')),
+  channels text[] not null default '{members}'
+    check (channels <@ array['members','instagram']::text[]),
+  status text not null default 'draft' check (status in ('draft','publishing','published','failed')),
+  pinned boolean not null default false,
+  ig_media_id text, ig_permalink text, error text,
+  published_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index posts_feed_idx on public.posts(published_at desc) where status = 'published';
+alter table public.posts enable row level security;
+create policy "posts members read" on public.posts for select
+  using (public.is_admin() or (status = 'published' and 'members' = any(channels) and (select auth.uid()) is not null));
+create policy "posts admin write" on public.posts for all using (public.is_admin()) with check (public.is_admin());
+
+-- Only the social-publish function (service role) may mark posts published or store IG ids.
+create or replace function public.guard_post_write() returns trigger
+language plpgsql set search_path = public as $$
+begin
+  if current_user in ('postgres','service_role','supabase_admin') then new.updated_at := now(); return new; end if;
+  if tg_op = 'INSERT' then
+    new.ig_media_id := null; new.ig_permalink := null; new.error := null;
+    if new.status <> 'draft' then new.status := 'draft'; end if;
+    new.published_at := null;
+  elsif new.ig_media_id is distinct from old.ig_media_id or new.ig_permalink is distinct from old.ig_permalink
+     or new.status is distinct from old.status or new.published_at is distinct from old.published_at then
+    raise exception 'publish through the app';
+  end if;
+  new.updated_at := now();
+  return new;
+end $$;
+revoke all on function public.guard_post_write() from public, anon, authenticated;
+create trigger posts_guard before insert or update on public.posts for each row execute function public.guard_post_write();
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('posts', 'posts', true, 8388608, array['image/jpeg'])
+on conflict (id) do nothing;
+create policy "posts img public read"  on storage.objects for select using (bucket_id = 'posts');
+create policy "posts img admin insert" on storage.objects for insert with check (bucket_id = 'posts' and public.is_admin());
+create policy "posts img admin delete" on storage.objects for delete using (bucket_id = 'posts' and public.is_admin());
+
+-- Instagram connection. No policies: only Edge Functions (service role) can read the token.
+create table public.social_accounts (
+  provider text primary key check (provider in ('instagram')),
+  account_id text not null,          -- Instagram professional account id
+  username text,
+  access_token text not null,        -- long-lived token, refreshed automatically
+  expires_at timestamptz not null,
+  updated_at timestamptz not null default now()
+);
+alter table public.social_accounts enable row level security;
+create or replace function public.instagram_status()
+returns table (connected boolean, username text, expires_at timestamptz)
+language sql stable security definer set search_path = public as $$
+  select true, username, expires_at from social_accounts where provider = 'instagram' and public.is_admin()
+  union all select false, null, null
+  where not exists (select 1 from social_accounts where provider = 'instagram') and public.is_admin();
+$$;
+revoke execute on function public.instagram_status() from public, anon;
+grant execute on function public.instagram_status() to authenticated;
+
+insert into public.site_settings(key, value) values ('hashtag_sets', null) on conflict (key) do nothing;

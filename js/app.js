@@ -108,11 +108,18 @@ function fitNotches(root = document) {
 addEventListener("resize", () => fitNotches());
 
 /* ---------- theme (ASC twin themes) ---------- */
-function toggleTheme() {
+function toggleTheme(e) {
   const dark = document.documentElement.classList.toggle("dark");
-  try { localStorage.setItem("sg.theme", dark ? "dark" : "light"); } catch (e) {}
-  document.querySelector('meta[name="theme-color"]').content = dark ? "#0a0c11" : "#eef0f1";
+  try { localStorage.setItem("sg.theme", dark ? "dark" : "light"); } catch (err) {}
+  document.querySelector('meta[name="theme-color"]').content = dark ? "#0a0c11" : "#e9ebee";
+  syncThemeSwitches();
+  const b = e?.currentTarget; if (b) { b.classList.add("kick"); setTimeout(() => b.classList.remove("kick"), 420); }
 }
+function syncThemeSwitches() {
+  const dark = document.documentElement.classList.contains("dark");
+  document.querySelectorAll(".auth-theme").forEach((b) => b.setAttribute("aria-checked", String(dark)));
+}
+syncThemeSwitches();
 document.getElementById("mode").onclick = toggleTheme;
 
 /* ---------- icons (ASC stroke set) ---------- */
@@ -127,6 +134,7 @@ const ICO = {
   out: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H6a2 2 0 00-2 2v12a2 2 0 002 2h3M15 8l4 4-4 4M19 12H9"/></svg>',
   arrow: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
   send: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M12 6l6 6-6 6"/></svg>',
+  bulb: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.2h5c0-.9.4-1.7 1.1-2.2A6 6 0 0 0 12 3z"/></svg>',
   mail: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="17" height="13" rx="2.5"/><path d="M4.5 7l7.5 6 7.5-6"/></svg>',
   google: '<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>',
 };
@@ -172,7 +180,7 @@ function renderSide(route) {
       ${item("reminders", "#/profile", ICO.user, t("nav_profile"))}
       ${isStaff() ? `<div class="sb-div"></div><div class="sb-eyebrow2">${L("Upravljanje", "Manage")}</div>
         ${item("scan", "#/desk", ICO.scan, t("nav_coach"))}
-        ${isAdmin() ? item("users", "#/admin", ICO.gear, t("nav_admin")) + item("assistant", "#/ideas", ICO.plus, L("Ideje", "Ideas")) : ""}` : ""}
+        ${isAdmin() ? item("users", "#/admin", ICO.gear, t("nav_admin")) + item("assistant", "#/studio", ICO.bulb, "Studio") : ""}` : ""}
       <div class="sb-div"></div>
       ${item("assistant", "#/site", ICO.globe, L("Web stranica", "Public site"))}
     </nav>
@@ -413,7 +421,7 @@ async function viewLogin() {
   <main class="auth-card">
     <div class="auth-top">
       <a href="#/site" aria-label="Saiyan FITT — početna / home">${WORDMARK.replace('class="logo wordmark"', 'class="auth-logo wordmark"').replace('id="wmg"', 'id="wmg-auth"').replace("url(#wmg)", "url(#wmg-auth)")}</a>
-      <button class="auth-theme" id="theme" type="button" aria-label="${L("Tema", "Theme")}"><i></i></button>
+      <button class="auth-theme" id="theme" type="button" role="switch" aria-checked="${document.documentElement.classList.contains("dark")}" aria-label="${L("Tamna tema", "Dark theme")}"><i></i></button>
     </div>
     <h1 class="auth-title">${esc(t("login_title"))}</h1>
     <p class="auth-sub">Saiyan Gym FITT · Lapad, Dubrovnik</p>
@@ -487,12 +495,13 @@ function buildTodayPlan(exercises, recovery, targets, profile) {
 async function viewDashboard() {
   $view.innerHTML = `<div class="loading">…</div>`;
   const uid = state.session.user.id;
-  const [pl, tg, rc, ms, ex, quotes, hist] = await Promise.all([
+  const [pl, tg, rc, ms, ex, quotes, hist, news] = await Promise.all([
     sb.rpc("my_power_level"), sb.rpc("my_next_targets"), sb.rpc("my_recovery"),
     sb.from("memberships").select("*, membership_plans(name_hr,name_en)").eq("user_id", uid).eq("status", "active")
       .order("ends_at", { ascending: false, nullsFirst: true }).limit(1),
     loadExercises(), loadQuotes(),
     sb.from("workouts").select("id, performed_on, workout_sets(count)").eq("user_id", state.session.user.id).order("performed_on", { ascending: false }).limit(4),
+    newsFeedHtml().catch(() => ""),
   ]);
   for (const r of [pl, tg, rc, ms]) if (r.error) return fail(r.error);
   const p = pl.data[0];
@@ -587,6 +596,7 @@ async function viewDashboard() {
         || `<p class="plan-meta">${esc(t("today_empty"))}</p>`}
     </div>
   </section>
+  ${news}
 
   <dialog class="pass-dialog" id="pass-dlg">
     <div class="pass-card">
@@ -1131,11 +1141,12 @@ const IDEA_STATUS = {
 const CAT = { content: ["Tekst", "Text"], style: ["Izgled", "Look"], feature: ["Funkcija", "Feature"], data: ["Podaci i sigurnost", "Data & security"] };
 const pick = (m, k) => (m[k] ? m[k][LANG === "hr" ? 0 : 1] : k || "");
 
-async function viewIdeas() {
+async function viewIdeas(kind = "idea") {
   if (!isAdmin()) { $view.innerHTML = `<div class="page"><p>${esc(t("staff_only"))}</p></div>`; return; }
   const sel = new URLSearchParams(location.hash.split("?")[1] || "").get("id");
+  const bug = kind === "bug", base = `#/studio?tab=${kind}`;
   const [threads, auto, owner] = await Promise.all([
-    sb.from("idea_threads").select("id,title,status,category,brief,pr_url,result_note,updated_at").is("archived_at", null).order("updated_at", { ascending: false }),
+    sb.from("idea_threads").select("id,kind,title,status,category,brief,pr_url,result_note,updated_at").eq("kind", kind).is("archived_at", null).order("updated_at", { ascending: false }),
     sb.from("idea_autonomy").select("*"),
     sb.rpc("is_owner"),
   ]);
@@ -1147,17 +1158,21 @@ async function viewIdeas() {
 
   $view.innerHTML = `
   <div class="page">
-    <div class="phead"><div><h1>${esc(L("Ideje", "Ideas"))}</h1>
-      <p class="muted">${esc(L("Opiši ideju za aplikaciju. Asistent postavlja pitanja dok ideja nije potpuna, a onda je šalješ Claudeu koji je izrađuje.",
+    <div class="phead"><div><h1>Studio</h1>
+      <p class="muted">${esc(bug ? L("Prijavi grešku. Asistent pita što treba da Claude može pronaći i popraviti problem.",
+        "Report a bug. The assistant asks what Claude needs to find and fix the problem.")
+        : L("Opiši ideju za aplikaciju. Asistent postavlja pitanja dok ideja nije potpuna, a onda je šalješ Claudeu koji je izrađuje.",
         "Describe an idea for the app. The assistant asks questions until it is complete, then you send it to Claude, who builds it."))}</p></div>
-      <a class="btn btn-ghost btn-sm" href="#/ideas">+ ${esc(L("Nova ideja", "New idea"))}</a></div>
+      <a class="btn btn-ghost btn-sm" href="${base}">+ ${esc(bug ? L("Nova prijava", "New report") : L("Nova ideja", "New idea"))}</a></div>
+    ${studioTabs(kind)}
     <div class="grid">
       <section class="card span-8 idea-chat" aria-labelledby="ic" data-tab="${esc(L("razgovor", "chat"))}">
-        <h2 id="ic">${esc(cur ? cur.title || L("Ideja", "Idea") : L("Nova ideja", "New idea"))}</h2>
+        <h2 id="ic">${esc(cur ? cur.title || L("Ideja", "Idea") : bug ? L("Nova prijava greške", "New bug report") : L("Nova ideja", "New idea"))}</h2>
         ${cur ? `<p class="small muted">${esc(pick(IDEA_STATUS, cur.status))}${cur.category ? " · " + esc(pick(CAT, cur.category)) : ""}</p>` : ""}
         <div class="idea-log" id="idea-log" aria-live="polite">
           ${msgs.length ? msgs.map((m) => `<div class="idea-msg ${m.role}">${esc(m.content)}</div>`).join("")
-            : `<div class="idea-msg assistant">${esc(L("Bok Zrinko! Koju ideju imaš za aplikaciju ili stranicu?", "Hi Zrinko! What idea do you have for the app or the website?"))}</div>`}
+            : `<div class="idea-msg assistant">${esc(bug ? L("Što ne radi? Reci mi na kojem ekranu i što se dogodilo.", "What's broken? Tell me which screen and what happened.")
+              : L("Bok Zrinko! Koju ideju imaš za aplikaciju ili stranicu?", "Hi Zrinko! What idea do you have for the app or the website?"))}</div>`}
         </div>
         ${cur?.brief ? `<details class="idea-brief" ${cur.status === "drafting" ? "open" : ""}><summary>${esc(L("Gotov opis za Claudea", "Finished brief for Claude"))}</summary>
           <pre>${esc(JSON.stringify(cur.brief, null, 2))}</pre></details>` : ""}
@@ -1173,10 +1188,10 @@ async function viewIdeas() {
       </section>
 
       <section class="card span-4" aria-labelledby="il" data-tab="${esc(L("popis", "list"))}">
-        <h2 id="il">${esc(L("Tvoje ideje", "Your ideas"))}</h2>
-        ${(threads.data || []).map((x) => `<a class="row" href="#/ideas?id=${x.id}"${x.id === sel ? ' aria-current="page"' : ""}>
+        <h2 id="il">${esc(bug ? L("Prijave", "Reports") : L("Ideje", "Ideas"))}</h2>
+        ${(threads.data || []).map((x) => `<a class="row" href="${base}&id=${x.id}"${x.id === sel ? ' aria-current="page"' : ""}>
             <span>${esc(x.title || L("Ideja", "Idea"))}</span><span class="small muted">${esc(pick(IDEA_STATUS, x.status))}</span></a>`).join("")
-          || `<p class="muted small">${esc(L("Još nema ideja.", "No ideas yet."))}</p>`}
+          || `<p class="muted small">${esc(bug ? L("Nema prijava.", "No reports.") : L("Još nema ideja.", "No ideas yet."))}</p>`}
       </section>
 
       <section class="card span-12" aria-labelledby="ia" data-tab="${esc(L("ovlasti", "autonomy"))}">
@@ -1198,7 +1213,7 @@ async function viewIdeas() {
     const btn = form.querySelector("button"); btn.disabled = true; inp.disabled = true;
     log.insertAdjacentHTML("beforeend", `<div class="idea-msg user">${esc(msg)}</div><div class="idea-msg assistant typing">…</div>`);
     log.scrollTop = log.scrollHeight;
-    const { data, error } = await sb.functions.invoke("idea-agent", { body: { thread_id: cur?.id || null, message: msg } });
+    const { data, error } = await sb.functions.invoke("idea-agent", { body: { thread_id: cur?.id || null, message: msg, kind } });
     if (error || data?.error) {
       log.querySelector(".typing")?.remove(); btn.disabled = false; inp.disabled = false;
       const code = data?.error || (await error?.context?.json?.().catch(() => ({})))?.error;
@@ -1207,20 +1222,20 @@ async function viewIdeas() {
         thread_limit: L("Ova ideja ima previše poruka. Pošalji je ili počni novu.", "This idea has too many messages. Send it or start a new one."),
         model_busy: L("Asistent je zauzet, pokušaj za minutu.", "The assistant is busy, try again in a minute.") }[code] || t("error") + (code || ""), 4000);
     }
-    if (!cur) { location.hash = `#/ideas?id=${data.thread_id}`; return; }
-    if (data.ready) return viewIdeas();
+    if (!cur) { location.hash = `${base}&id=${data.thread_id}`; return; }
+    if (data.ready) return viewIdeas(kind);
     else { log.querySelector(".typing").textContent = data.reply; log.querySelector(".typing").classList.remove("typing");
       inp.value = ""; btn.disabled = false; inp.disabled = false; inp.focus(); log.scrollTop = log.scrollHeight; }
   };
   const q = document.getElementById("idea-queue");
   if (q) q.onclick = async () => {
     const { error } = await sb.from("idea_threads").update({ status: "queued" }).eq("id", cur.id);
-    error ? fail(error) : (toast(L("Poslano. Claude će se javiti ovdje.", "Sent. Claude will report back here.")), viewIdeas());
+    error ? fail(error) : (toast(L("Poslano. Claude će se javiti ovdje.", "Sent. Claude will report back here.")), viewIdeas(kind));
   };
   const uq = document.getElementById("idea-unqueue");
   if (uq) uq.onclick = async () => {
     const { error } = await sb.from("idea_threads").update({ status: "drafting" }).eq("id", cur.id);
-    error ? fail(error) : viewIdeas();
+    error ? fail(error) : viewIdeas(kind);
   };
   document.querySelectorAll("[data-auto]").forEach((c) => (c.onchange = async () => {
     const { error } = await sb.from("idea_autonomy").update({ auto_ship: c.checked, updated_at: new Date().toISOString() }).eq("category", c.dataset.auto);
@@ -1237,7 +1252,7 @@ function decorate() {
     [t("churn_title"), "radar"], [t("a_prices"), L("cijene", "prices")], [t("a_payment"), L("plaćanje", "payment")],
     [t("a_gallery"), L("galerija", "gallery")], [t("a_facts"), L("asistent", "assistant")], [t("a_motivation"), L("motivacija", "motivation")],
   ];
-  const fallback = { "#/log": L("unos", "entry"), "#/progress": "e1RM", "#/profile": L("profil", "profile"), "#/desk": L("recepcija", "desk"), "#/admin": L("postavke", "settings"), "#/ideas": L("ideje", "ideas") };
+  const fallback = { "#/log": L("unos", "entry"), "#/progress": "e1RM", "#/profile": L("profil", "profile"), "#/desk": L("recepcija", "desk"), "#/admin": L("postavke", "settings"), "#/studio": "studio", "#/ideas": "studio" };
   const h = location.hash.split("?")[0];
   let n = 0;
   $view.querySelectorAll(".page label:not([for])").forEach((lab) => {
@@ -1272,9 +1287,9 @@ async function signOut() {
    ========================================================= */
 const ROUTES = {
   "#/": viewStart, "#/site": viewLanding, "#/login": viewLogin,
-  "#/app": viewDashboard, "#/log": viewLog, "#/progress": viewProgress, "#/profile": viewProfile, "#/desk": viewDesk, "#/admin": viewAdmin, "#/ideas": viewIdeas,
+  "#/app": viewDashboard, "#/log": viewLog, "#/progress": viewProgress, "#/profile": viewProfile, "#/desk": viewDesk, "#/admin": viewAdmin, "#/studio": viewStudio, "#/ideas": viewStudio,
 };
-const PROTECTED = new Set(["#/app", "#/log", "#/progress", "#/profile", "#/desk", "#/admin", "#/ideas"]);
+const PROTECTED = new Set(["#/app", "#/log", "#/progress", "#/profile", "#/desk", "#/admin", "#/studio", "#/ideas"]);
 
 async function route() {
   let h = location.hash.split("?")[0] || "#/";

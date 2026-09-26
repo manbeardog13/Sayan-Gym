@@ -4,7 +4,7 @@
   "start_url": "./#/app",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#eef0f1",
-  "theme_color": "#eef0f1",
+  "background_color": "#0a0c11",
+  "theme_color": "#0a0c11",
   "icons": [{ "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
 }

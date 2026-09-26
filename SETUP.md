@@ -67,3 +67,27 @@ The pass code appears as a QR on the member's dashboard; staff scan it on the Fr
 
 See [IDEAS_PIPELINE.md](IDEAS_PIPELINE.md): run `supabase/ideas.sql`, deploy `supabase/functions/idea-agent`,
 add the free `GEMINI_API_KEY` secret, and add yourself to `app_owners`.
+
+## 8. Studio: member news and Instagram
+
+Run `supabase/ideas.sql` (includes the `studio_posts` part) and deploy `supabase/functions/social-publish` (verify_jwt on).
+Posting to **members** works right away. **Share from phone** works without any setup: it opens the phone's
+share sheet with the finished photos (choose Instagram) and copies the caption to paste.
+
+To post **straight to Instagram** from the app (free, one-time setup, done by the account owner):
+1. In the Instagram app: make @saiyan_gym_fitt a **Professional** account (Business or Creator).
+2. developers.facebook.com → **Create app** → use case *Manage messaging & content on Instagram* →
+   **API setup with Instagram login** → add the Instagram account and **Generate token**
+   (needs the `instagram_business_content_publish` permission). Note the Instagram user ID it shows.
+   While the app is in development mode this works for accounts that have a role on the app, which is all we need.
+3. Supabase → SQL Editor (never paste the token into chat or the repo):
+   ```sql
+   insert into public.social_accounts(provider, account_id, username, access_token, expires_at)
+   values ('instagram', 'IG_USER_ID', 'saiyan_gym_fitt', 'LONG_LIVED_TOKEN', now() + interval '60 days');
+   ```
+   The token is refreshed automatically whenever you publish with less than 10 days left. If nobody posts for
+   60 days it expires; generate a new one the same way.
+
+Meta changes these screens often; if a step looks different, follow Meta's current "Instagram API with
+Instagram Login → Content publishing" guide. Instagram allows up to 100 API posts per day, JPEG only
+(the Studio exports JPEG), 1–10 photos per post.
