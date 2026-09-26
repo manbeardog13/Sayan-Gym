@@ -91,3 +91,10 @@ To post **straight to Instagram** from the app (free, one-time setup, done by th
 Meta changes these screens often; if a step looks different, follow Meta's current "Instagram API with
 Instagram Login → Content publishing" guide. Instagram allows up to 100 API posts per day, JPEG only
 (the Studio exports JPEG), 1–10 photos per post.
+
+## 9. Wave 1 (engagement)
+
+Run `supabase/wave1.sql` once. It replaces `my_power_level` (new XP formula: sessions and consistent weeks
+count more than raw volume, plus comeback bonus and rest tokens), so existing members' levels will shift.
+Adds `my_onboarding`, `greet_today`, `staff_touches` and `pr_bells`. Mention the staff greet list and the PR
+bell in the privacy notice. See RESEARCH.md for the reasoning.

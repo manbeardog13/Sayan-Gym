@@ -495,13 +495,13 @@ function buildTodayPlan(exercises, recovery, targets, profile) {
 async function viewDashboard() {
   $view.innerHTML = `<div class="loading">…</div>`;
   const uid = state.session.user.id;
-  const [pl, tg, rc, ms, ex, quotes, hist, news] = await Promise.all([
+  const [pl, tg, rc, ms, ex, quotes, hist, news, onboard, bells] = await Promise.all([
     sb.rpc("my_power_level"), sb.rpc("my_next_targets"), sb.rpc("my_recovery"),
     sb.from("memberships").select("*, membership_plans(name_hr,name_en)").eq("user_id", uid).eq("status", "active")
       .order("ends_at", { ascending: false, nullsFirst: true }).limit(1),
     loadExercises(), loadQuotes(),
     sb.from("workouts").select("id, performed_on, workout_sets(count)").eq("user_id", state.session.user.id).order("performed_on", { ascending: false }).limit(4),
-    newsFeedHtml().catch(() => ""),
+    newsFeedHtml().catch(() => ""), onboardingHtml().catch(() => ""), bellsHtml().catch(() => ""),
   ]);
   for (const r of [pl, tg, rc, ms]) if (r.error) return fail(r.error);
   const p = pl.data[0];
@@ -516,7 +516,7 @@ async function viewDashboard() {
   const plan = buildTodayPlan(ex, recovery, targets, pr);
   const goalTxt = pr.goal ? t("goal_" + pr.goal) : "—", expTxt = pr.experience ? t("exp_" + pr.experience) : "—";
 
-  $view.innerHTML = `
+  $view.innerHTML = `${installCoachHtml()}${onboard}
   <section class="hero">
     <div class="stage reveal" style="animation-delay:110ms">
       <span class="photo" aria-hidden="true"></span><span class="scrim" aria-hidden="true"></span>
@@ -526,6 +526,7 @@ async function viewDashboard() {
       <div class="hero-num"><span data-count="${p.level}">0</span><em>${esc(t("level"))}</em></div>
       <div class="cap">${p.next_tier ? esc(t("xp_to", (p.next_tier_xp - p.xp).toLocaleString(), p.next_tier)) : esc(t("max_tier"))}</div>
       <div class="meter"><i data-w="${pct}"></i></div>
+      <div class="cap tokens">🛡 ${esc(L(`Žetoni odmora: ${p.tokens_left ?? 2} ovaj mjesec`, `Rest tokens: ${p.tokens_left ?? 2} this month`))}${p.comebacks ? ` · ⚡ ${esc(L(`Povratci: ${p.comebacks}`, `Comebacks: ${p.comebacks}`))}` : ""}</div>
       <div class="space"></div>
       <div class="spills">
         <a class="spill" href="#/progress"><b data-count="${Math.round(p.total_volume_kg / 1000)}">0</b><span>t · ${esc(t("volume"))}</span></a>
@@ -596,6 +597,7 @@ async function viewDashboard() {
         || `<p class="plan-meta">${esc(t("today_empty"))}</p>`}
     </div>
   </section>
+  ${bells}
   ${news}
 
   <dialog class="pass-dialog" id="pass-dlg">
@@ -609,7 +611,7 @@ async function viewDashboard() {
     </div>
   </dialog>`;
 
-  animateIn($view);
+  animateIn($view); wireInstallCoach();
   const dlg = document.getElementById("pass-dlg");
   document.getElementById("pass-open").onclick = (e) => { e.preventDefault(); dlg.showModal(); };
   document.getElementById("pass-x").onclick = () => dlg.close();
@@ -639,12 +641,13 @@ async function viewLog() {
     <div class="grid">
       <section class="card span-8">
         <div class="form-grid">
-          <div><label for="d">${LANG === "hr" ? "Datum" : "Date"}</label><input id="d" type="date" value="${new Date().toISOString().slice(0, 10)}"></div>
+          <div><label for="d">${LANG === "hr" ? "Datum" : "Date"}</label><input id="d" type="date" value="${todayZagreb()}"></div>
           <div><label for="ex-pick">${esc(t("exercise"))}</label>
             <select id="ex-pick"><option value="">${esc(t("pick_ex"))}</option>
               ${ex.map((e) => `<option value="${e.id}">${esc(nameOf(e))}</option>`).join("")}</select></div>
         </div>
         <div id="blocks" style="margin-top:18px"></div>
+        ${workoutBarHtml()}
         <button class="btn btn-primary" id="save" type="button" style="width:100%;margin-top:8px">${esc(t("save_workout"))}</button>
       </section>
       <section class="card span-4">
@@ -662,16 +665,18 @@ async function viewLog() {
       return `
       <div class="ex-block">
         <header><h3 style="margin:0">${esc(nameOf(e))}</h3>
-          <button class="icon-btn btn-sm" data-rmb="${bi}" type="button" aria-label="Remove">✕</button></header>
+          <span class="ex-tools"><button class="chip" data-plates="${bi}" type="button">${esc(L("Utezi", "Plates"))}</button>
+          <button class="icon-btn btn-sm" data-rmb="${bi}" type="button" aria-label="${esc(L("Ukloni vježbu", "Remove exercise"))}">✕</button></span></header>
         ${tg ? `<div class="hint">${fmtDate(tg.last_date)}: ${fmtKg(tg.last_load)} × ${tg.last_reps} → ${fmtKg(tg.suggest_load)} × ${tg.suggest_reps} · ${esc(t("advice_" + tg.advice))}</div>` : ""}
-        <div class="set-row lbl"><span></span><span>${esc(t("load"))}</span><span>${esc(t("reps"))}</span><span>${esc(t("rpe"))}</span><span></span></div>
+        <div class="set-row lbl"><span></span><span>${esc(t("load"))}</span><span>${esc(t("reps"))}</span><span>${esc(t("rpe"))}</span><span></span><span></span></div>
         ${b.sets.map((s, si) => `
-          <div class="set-row">
+          <div class="set-row${s.done ? " done" : ""}">
             <span class="set-no">${si + 1}</span>
             <input inputmode="decimal" aria-label="${esc(t("load"))}" data-b="${bi}" data-s="${si}" data-f="load" value="${s.load}">
             <input inputmode="numeric" aria-label="${esc(t("reps"))}" data-b="${bi}" data-s="${si}" data-f="reps" value="${s.reps}">
             <input inputmode="decimal" aria-label="${esc(t("rpe"))}" data-b="${bi}" data-s="${si}" data-f="rpe" value="${s.rpe}" placeholder="—">
-            <button class="icon-btn" data-rms="${bi}:${si}" type="button" aria-label="Remove set">−</button>
+            <button class="icon-btn set-done" data-done="${bi}:${si}" type="button" aria-pressed="${!!s.done}" aria-label="${esc(L("Serija gotova — pokreni odmor", "Set done — start rest"))}">✓</button>
+            <button class="icon-btn" data-rms="${bi}:${si}" type="button" aria-label="${esc(L("Ukloni seriju", "Remove set"))}">−</button>
           </div>`).join("")}
         <button class="btn btn-ghost btn-sm" data-add="${bi}" type="button">+ ${esc(t("add_set"))}</button>
       </div>`;
@@ -688,9 +693,17 @@ async function viewLog() {
     const { b, s, f } = e.target.dataset; if (b == null) return;
     blocks[b].sets[s][f] = e.target.value.replace(",", ".");
   });
+  wireWorkoutBar();
   document.getElementById("blocks").addEventListener("click", (e) => {
-    const d = e.target.dataset;
-    if (d.add != null) { const last = blocks[d.add].sets.at(-1); blocks[d.add].sets.push({ ...last }); draw(); }
+    const d = e.target.closest("button")?.dataset || {};
+    if (d.done != null) {
+      const [b, si] = d.done.split(":"), set = blocks[b].sets[si];
+      set.done = !set.done; draw();
+      if (set.done) { buzz(30); Workout.start(restFor(ex.find((x) => x.id === blocks[b].exercise_id))); }
+      return;
+    }
+    if (d.plates != null) { const cur = blocks[d.plates].sets.findLast((x) => !x.done) || blocks[d.plates].sets.at(-1); return openPlates(cur.load); }
+    if (d.add != null) { const last = blocks[d.add].sets.at(-1); blocks[d.add].sets.push({ ...last, done: false }); draw(); }
     if (d.rmb != null) { blocks.splice(d.rmb, 1); draw(); }
     if (d.rms != null) { const [b, s] = d.rms.split(":"); blocks[b].sets.splice(s, 1); if (!blocks[b].sets.length) blocks.splice(b, 1); draw(); }
   });
@@ -702,10 +715,14 @@ async function viewLog() {
     }));
     if (!rows.length) return toast(t("no_sets"));
     ev.target.disabled = true;
-    const { data: w, error } = await sb.from("workouts").insert({ performed_on: document.getElementById("d").value }).select().single();
+    const day = document.getElementById("d").value || todayZagreb();
+    const { data: w, error } = await sb.from("workouts").insert({ performed_on: day }).select().single();
     if (error) { ev.target.disabled = false; return fail(error); }
     const { error: e2 } = await sb.from("workout_sets").insert(rows.map((r) => ({ ...r, workout_id: w.id })));
-    if (e2) { ev.target.disabled = false; return fail(e2); }
+    if (e2) { await sb.from("workouts").delete().eq("id", w.id); ev.target.disabled = false; return fail(e2); }
+    leaveWorkout();
+    const prs = await findPRs(rows, day, ex).catch(() => []);
+    if (prs.length) return celebratePRs(prs);
     toast(t("saved")); location.hash = "#/app";
   };
 }
@@ -861,10 +878,10 @@ async function viewProfile() {
    ========================================================= */
 async function viewDesk() {
   if (!isStaff()) { $view.innerHTML = `<div class="page"><p>${esc(t("staff_only"))}</p></div>`; return; }
-  const [inside, radar] = await Promise.all([
+  const [inside, radar, greet] = await Promise.all([
     sb.from("check_ins").select("id, user_id, checked_in_at").is("checked_out_at", null)
       .gt("checked_in_at", new Date(Date.now() - 3 * 3600e3).toISOString()).order("checked_in_at", { ascending: false }),
-    sb.rpc("churn_radar"),
+    sb.rpc("churn_radar"), greetHtml().catch(() => ""),
   ]);
   if (inside.error) return fail(inside.error);
   const ids = [...new Set((inside.data || []).map((c) => c.user_id))];
@@ -875,6 +892,7 @@ async function viewDesk() {
   <div class="page">
     <div class="phead"><h1>${esc(t("desk_title"))}</h1></div>
     <div class="grid">
+      ${greet}
       <section class="card span-6">
         <h2>${esc(t("checkin_title"))}</h2>
         <div class="inline-form">
@@ -904,6 +922,7 @@ async function viewDesk() {
     </div>
   </div>`;
 
+  wireGreet(viewDesk);
   const checkIn = async (raw) => {
     const code = String(raw).replace(/^SAIYAN:/i, "").trim().toLowerCase();
     if (!code) return;
@@ -1297,6 +1316,8 @@ async function route() {
   if (PROTECTED.has(h) && !state.session) { location.hash = "#/login"; return; }
   if (h !== "#/login") { document.body.classList.remove("is-auth"); $auth.innerHTML = ""; clearInterval(viewLogin._iv); }
   document.documentElement.classList.remove("side-open");
+  if (h !== "#/log") leaveWorkout();
+  document.querySelectorAll("dialog.pr-dlg,dialog.plates-dlg").forEach((d) => d.remove());
   renderNav(h);
   try { await ROUTES[h](); } catch (e) { fail(e); }
   if (!["#/", "#/site", "#/app", "#/login"].includes(h)) decorate();
