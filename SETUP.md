@@ -33,12 +33,8 @@ Sign in on the live site, open **Profile**, and tap **Become admin**.
 This works only while the gym has no admin, so do it before sharing the link.
 A **Settings** tab then appears in the menu.
 
-To make Zrinko or desk staff admin/coach later, run in Supabase → SQL Editor:
-
-```sql
-update public.profiles set role = 'admin'   -- or 'coach' for front-desk staff
-where id = (select id from auth.users where email = 'THEIR_EMAIL@gmail.com');
-```
+To make Zrinko admin (or desk staff coach): he signs in once, then you open **Settings → Team and roles**,
+search his name and pick *Admin*. (Requires `supabase/ideas.sql`, which also fixes the role guard so this works.)
 
 ## 4. Fill in the details later (Settings tab)
 
@@ -66,3 +62,8 @@ The pass code appears as a QR on the member's dashboard; staff scan it on the Fr
 - Whether the old Iva Vojnovića 108 location still operates.
 - Trademark clearance for "Saiyan" (EUIPO / DZIV) before more brand investment.
 
+
+## 7. Ideas lab (Zrinko → Claude)
+
+See [IDEAS_PIPELINE.md](IDEAS_PIPELINE.md): run `supabase/ideas.sql`, deploy `supabase/functions/idea-agent`,
+add the free `GEMINI_API_KEY` secret, and add yourself to `app_owners`.

@@ -26,13 +26,20 @@ Built on the same architecture as ASC: a static, no-build PWA on GitHub Pages wi
 - Check-in by pass code or QR scan, who is inside now, check-out.
 - **Churn radar:** members at risk of leaving (absence, falling visits, expiring pass, first 90 days), so Zrinko can send a personal message.
 
+**Ideas** (admin)
+- Zrinko shapes an idea with a Gemini-powered interviewer; the finished brief goes to a scheduled Claude routine
+  that builds it. Text and style changes ship on their own; bigger changes wait for Toni. See IDEAS_PIPELINE.md.
+
+The app opens on the sign-in screen; the public site is at `#/site`. Pinch and double-tap zoom are disabled.
+
 ## How the "AI" works
 
 All intelligence runs inside Supabase. There are no third-party AI API keys and no pay-per-use calls.
 - Coaching, Power Level, recovery and churn scoring are SQL functions in the database (`supabase/schema.sql`).
 - "Ask the gym" uses Supabase's built-in `gte-small` embedding model and pgvector (`supabase/functions/concierge`).
 
-A generative chat coach would need an LLM provider API key. The `ai_messages` table is ready if the client later chooses that.
+The one generative piece is the admin-only idea agent (Gemini free tier, `GEMINI_API_KEY` secret); members never talk to it.
+A generative chat coach for members would need an LLM provider API key. The `ai_messages` table is ready if the client later chooses that.
 
 ## Files
 
