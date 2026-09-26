@@ -111,7 +111,7 @@ addEventListener("resize", () => fitNotches());
 function toggleTheme(e) {
   const dark = document.documentElement.classList.toggle("dark");
   try { localStorage.setItem("sg.theme", dark ? "dark" : "light"); } catch (err) {}
-  document.querySelector('meta[name="theme-color"]').content = dark ? "#0a0c11" : "#e9ebee";
+  syncThemeColor();
   syncThemeSwitches();
   const b = e?.currentTarget;
   if (b && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -125,9 +125,15 @@ function toggleTheme(e) {
     setTimeout(() => { b.classList.remove("kick"); burst.remove(); }, 700);
   }
 }
+function syncThemeColor() {
+  document.querySelector('meta[name="theme-color"]').content = document.documentElement.classList.contains('dark')
+    ? (innerWidth <= 700 ? '#14161c' : '#0a0c11') : '#e9ebee';
+}
+syncThemeColor();
+addEventListener('resize', syncThemeColor);
 function syncThemeSwitches() {
   const dark = document.documentElement.classList.contains("dark");
-  document.querySelectorAll(".auth-theme").forEach((b) => b.setAttribute("aria-checked", String(dark)));
+  document.querySelectorAll(".auth-theme, [data-theme]").forEach((b) => b.setAttribute("aria-checked", String(dark)));
 }
 syncThemeSwitches();
 document.getElementById("mode").onclick = toggleTheme;
@@ -161,11 +167,12 @@ function renderNav(route) {
   lb.setAttribute("aria-label", L("Switch to English", "Prebaci na hrvatski"));
   renderSide(route);
 }
-document.getElementById("lang-btn").onclick = () => {
+function changeLanguage() {
   setLang(LANG === "hr" ? "en" : "hr");
   if (state.session) sb.from("profiles").update({ locale: LANG }).eq("id", state.session.user.id).then(() => {});
   route();
-};
+}
+document.getElementById("lang-btn").onclick = changeLanguage;
 
 function renderSide(route) { renderDock(route); }
 
@@ -316,7 +323,7 @@ async function viewLanding() {
       </div>
     </div>
 
-    <div class="card reveal" style="animation-delay:270ms">
+    <div class="card reveal" id="hours" style="animation-delay:270ms">
       <span class="tab-tl">${esc(L("radno vrijeme", "hours"))}</span>
       <h3>${esc(open ? t("open_today") : t("closed_now"))} <span class="badge" style="margin-left:auto">${esc(open ? L("otvoreno", "open") : L("zatvoreno", "closed"))}</span></h3>
       <div class="row"><span>${esc(L("Ponedjeljak – subota", "Monday – Saturday"))}</span><b>06–22</b></div>
@@ -325,7 +332,7 @@ async function viewLanding() {
       <p class="quote-line" style="margin-top:12px">„${esc(dailyQuote(quotes))}”</p>
     </div>
 
-    <div class="card dark reveal" style="animation-delay:310ms">
+    <div class="card dark reveal" id="contact" style="animation-delay:310ms">
       <span class="tab-tl">${esc(t("visit_title"))}</span>
       <h3>${esc(L("Lapad, Dubrovnik", "Lapad, Dubrovnik"))}</h3>
       <a class="mini" href="${cfg.gym.maps}" target="_blank" rel="noopener"><time>${esc(L("Adresa", "Address"))}</time><b>${esc(cfg.gym.address)}</b></a>
@@ -362,7 +369,7 @@ async function viewLogin() {
   $view.innerHTML = "";
   $auth.innerHTML = `
   <main class="auth-card">
-    <div class="auth-rise" id="auth-rise" hidden></div>
+    <div class="auth-rise" id="auth-rise"></div>
     <div class="auth-top">
       <a href="#/site" aria-label="Saiyan FITT — početna / home">${WORDMARK.replace('class="logo wordmark"', 'class="auth-logo wordmark"').replace('id="wmg"', 'id="wmg-auth"').replace("url(#wmg)", "url(#wmg-auth)")}</a>
       <a class="auth-home" href="#/site">${esc(t("nav_home"))}</a>
@@ -381,7 +388,8 @@ async function viewLogin() {
     <p class="auth-switch" style="font-size:14px;margin-top:6px"><button type="button" id="auth-lang">${LANG === "hr" ? "English" : "Hrvatski"}</button></p>
   </main>`;
   document.getElementById("theme").onclick = toggleTheme;
-  document.getElementById("auth-lang").onclick = () => { setLang(LANG === "hr" ? "en" : "hr"); route(); };
+  document.getElementById("auth-lang").onclick = changeLanguage;
+  restoreAuthFrame();
   let i = 0;
   clearInterval(viewLogin._iv);
   if (quotes.length > 1 && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -1364,19 +1372,15 @@ const ROUTES = {
 };
 const PROTECTED = new Set(["#/app", "#/log", "#/progress", "#/profile", "#/desk", "#/admin", "#/studio", "#/ideas"]);
 
-const navTrail = [];
-let navPop = false;
-window.addEventListener("popstate", () => { navPop = true; });
+const navigationMotion = createNavigationMotion(history);
+window.addEventListener("popstate", navigationMotion.onPop);
 async function route() {
   let h = location.hash.split("?")[0] || "#/";
   if (!ROUTES[h]) {
     h = state.session ? "#/app" : "#/login";
     history.replaceState(history.state, "", h);
   }
-  const back = navPop && navTrail.length > 1 && navTrail[navTrail.length - 2] === location.hash;
-  navPop = false;
-  if (back) navTrail.pop();
-  else if (navTrail[navTrail.length - 1] !== location.hash) navTrail.push(location.hash);
+  const direction = navigationMotion.take();
   delete document.documentElement.dataset.nav;
   if (PROTECTED.has(h) && !state.session) { location.hash = "#/login"; return; }
   if (h !== "#/login") { document.body.classList.remove("is-auth"); $auth.innerHTML = ""; clearInterval(viewLogin._iv); }
@@ -1387,12 +1391,12 @@ async function route() {
   document.querySelectorAll("dialog.photo-dlg,dialog.pr-dlg,dialog.plates-dlg").forEach((d) => d.remove());
   renderNav(h);
   try { await ROUTES[h](); } catch (e) { fail(e); }
-  document.documentElement.dataset.nav = back ? "back" : "fwd";
+  document.documentElement.dataset.nav = direction;
   if (!["#/", "#/site", "#/app", "#/login"].includes(h)) decorate();
   fitNotches();
   if (h !== "#/login") $view.focus({ preventScroll: true });
   const section = new URLSearchParams(location.hash.split("?")[1] || "").get("section");
-  const target = section === "prices" || section === "visit" ? document.getElementById(section) : null;
+  const target = ["prices", "hours", "contact", "visit"].includes(section) ? document.getElementById(section) : null;
   if (target) target.scrollIntoView({ block: "start" });
   else window.scrollTo(0, 0);
   if (section === "pass" && h === "#/app") document.getElementById("pass-open")?.click();

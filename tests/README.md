@@ -6,14 +6,18 @@ Run from the repository root with Node:
 node --test tests/member-ui.test.cjs
 ```
 
-The deterministic tests cover published plan and member-post selection, escaping,
+The 21 deterministic tests cover published plan and member-post selection, escaping,
 guest/member/coach/admin navigation, continuous wrapping, bidirectional dragging,
-resume on release or stopped movement, vertical-scroll gestures, cancellation,
-pause, reduced motion, cleanup, and the same-video splash handoff.
+nonlinear coasting and immediate loop resume at rest, vertical gesture click
+suppression, cancellation, pause, reduced motion (including during coasting),
+cleanup, popstate-only back transitions, the same-video splash handoff and still
+restoration, and video range-request cache handling.
 
 Browser review for this pass used Chrome at desktop and 390px phone width: public
-offers, dock sections, offer detail/close, login, the settled video frame, and
-light/dark controls. The public strip showed the four original training photos
+offers, phone dock and desktop rail, menu language/theme, both horizontal drag
+directions, vertical drag without opening a card, tap/detail/close, browser back,
+login and the retained paused video frame. At 390 CSS pixels the header starts at
+the app surface with zero body/shell top padding. The public strip showed the four original training photos
 plus five published plans. Member posts retain the existing members-only access
 boundary; they are not exposed to signed-out visitors.
 

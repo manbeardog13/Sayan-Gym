@@ -3,29 +3,26 @@ function renderDock(route) {
   renderDock.cleanup?.();
   document.querySelector('.member-dock')?.remove();
   document.documentElement.classList.remove('has-side', 'side-open');
-  if (route === '#/login') return;
+  document.documentElement.classList.add('has-member-nav');
   const member = state.session;
   const groups = [
     { key: 'gym', label: L('Teretana', 'Gym'), icon: ICO.globe, links: [
-      ['#/site', L('Pregled teretane', 'Gym overview')],
-      ['#/site?section=prices', L('Članarine i ponude', 'Memberships & offers')],
-      ['#/site?section=visit', L('Posjet i kontakt', 'Visit & contact')]] },
-    { key: 'train', label: L('Trening', 'Train'), icon: ICO.plus, links: [
-      [member ? '#/app' : '#/login', L('Moj plan', 'My plan')],
-      [member ? '#/log' : '#/login', t('nav_log')],
-      [member ? '#/progress' : '#/login', t('nav_progress')]] },
+      ['#/site', L('Početna', 'Home')],
+      ['#/site?section=prices', L('Cijene', 'Prices')],
+      ['#/site?section=hours', L('Radno vrijeme', 'Hours')],
+      ['#/site?section=contact', L('Kontakt', 'Contact')]] },
+    { key: 'train', label: L('Trening', 'Train'), icon: ICO.plus, links: member ? [
+      ['#/app', L('Moj trening', 'My training')],
+      ['#/log', L('Dnevnik', 'Log')],
+      ['#/progress', L('Napredak', 'Progress')]] : [['#/login', t('sign_in')]] },
     { key: 'me', label: L('Ja', 'Me'), icon: ICO.user, links: member ? [
-      ['#/profile', t('nav_profile')], ['#/app?section=pass', L('Moja članska karta', 'My gym pass')]] : [
-      ['#/login', t('sign_in')]] },
+      ['#/profile', t('nav_profile')]] : [] },
   ];
   if (isStaff()) groups.push({ key: 'staff', label: L('Osoblje', 'Staff'), icon: ICO.scan, links: [
-    ['#/desk', t('nav_coach')], ...(isAdmin() ? [
-      ['#/studio?tab=idea', L('Studio · ideje', 'Studio · ideas')],
-      ['#/studio?tab=bug', L('Studio · prijave', 'Studio · reports')],
-      ['#/studio?tab=post', L('Studio · objave', 'Studio · posts')],
-      ['#/admin', t('nav_admin')]] : [])] });
+    ['#/desk', L('Recepcija', 'Desk')], ...(isAdmin() ? [
+      ['#/admin', t('nav_admin')], ['#/studio', 'Studio']] : [])] });
   const active = ['#/desk', '#/admin', '#/studio', '#/ideas'].includes(route) ? 'staff'
-    : route === '#/profile' ? 'me' : ['#/app', '#/log', '#/progress'].includes(route) ? 'train' : 'gym';
+    : route === '#/profile' ? 'me' : ['#/app', '#/log', '#/progress', '#/login'].includes(route) ? 'train' : 'gym';
   const dock = document.createElement('nav');
   dock.className = 'member-dock';
   dock.setAttribute('aria-label', L('Glavna navigacija', 'Main navigation'));
@@ -33,7 +30,9 @@ function renderDock(route) {
     <button class="dock-trigger${active === g.key ? ' on' : ''}" type="button" aria-expanded="false" aria-controls="dock-${g.key}">${g.icon}<span>${esc(g.label)}</span></button>
     <section class="dock-panel" id="dock-${g.key}" aria-label="${esc(g.label)}" hidden>
       <h2>${esc(g.label)}</h2>${g.links.map(([href, label]) => `<a href="${href}"${location.hash === href ? ' aria-current="page"' : ''}>${esc(label)}<span aria-hidden="true">↗</span></a>`).join('')}
-      ${g.key === 'me' && member ? `<button type="button" data-logout>${ICO.out}${esc(t('sign_out'))}</button>` : ''}
+      ${g.key === 'me' ? `<button type="button" data-language><span>${esc(L('Jezik', 'Language'))}</span><b>${LANG === 'hr' ? 'English' : 'Hrvatski'}</b></button>
+        <button type="button" data-theme role="switch" aria-checked="${document.documentElement.classList.contains('dark')}" aria-label="${esc(L('Tamna tema', 'Dark theme'))}"><span>${esc(L('Tema', 'Theme'))}</span><i class="dock-theme-dot" aria-hidden="true"></i></button>
+        ${member ? `<button type="button" data-logout>${ICO.out}${esc(t('sign_out'))}</button>` : ''}` : ''}
     </section></div>`).join('');
   const close = () => {
     dock.querySelectorAll('.dock-panel').forEach(p => p.hidden = true);
@@ -49,6 +48,8 @@ function renderDock(route) {
         document.getElementById(trigger.getAttribute('aria-controls')).hidden = false;
       }
     } else if (e.target.closest('a')) close();
+    else if (e.target.closest('[data-language]')) changeLanguage();
+    else if (e.target.closest('[data-theme]')) toggleTheme({ currentTarget: e.target.closest('[data-theme]') });
     else if (e.target.closest('[data-logout]')) signOut();
   });
   dock.addEventListener('keydown', e => {
@@ -61,7 +62,6 @@ function renderDock(route) {
   });
   dock.addEventListener('focusout', e => { if (!dock.contains(e.relatedTarget)) close(); });
   // One outside-click listener for the current dock, with explicit teardown on navigation.
-  renderDock.cleanup?.();
   const outside = e => { if (!dock.contains(e.target)) close(); };
   document.addEventListener('pointerdown', outside);
   renderDock.cleanup = () => document.removeEventListener('pointerdown', outside);
@@ -108,6 +108,7 @@ function wireStream() {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)');
   const pause = viewport.closest('.recent').querySelector('.stream-pause');
   let width = 0, position = 0, target = 0, last = 0, raf = 0, pointer = null, lastX = 0, startX = 0, startY = 0, moved = false, manualAt = 0, paused = false, focused = false;
+  let velocity = 0, sampleAt = 0, axis = null;
   const draw = () => { track.style.transform = `translate3d(${-position}px,0,0)`; };
   const wrap = () => {
     if (!width) return;
@@ -127,13 +128,20 @@ function wireStream() {
   };
   const step = now => {
     const dt = Math.min(last ? now - last : 16, 40); last = now;
-    const dragging = pointer !== null && now - manualAt < 70;
+    const dragging = pointer !== null && axis === 'x' && now - manualAt < 64;
     if (dragging) {
-      position += (target - position) * (reduce.matches ? 1 : 1 - Math.exp(-dt / 42));
+      const delta = (target - position) * (reduce.matches ? 1 : 1 - Math.exp(-dt / 42));
+      position += delta;
+      velocity = reduce.matches ? 0 : delta / dt;
     } else {
-      // No inertial coast or timeout after release: the loop owns the very next frame.
       target = position;
-      if (!reduce.matches && !paused && !focused && !document.hidden) position += dt * .028;
+      if (!reduce.matches && !paused && !focused && !document.hidden) {
+        // Exponential friction, in pixels/ms, is independent of display refresh rate.
+        // At rest there is no delayed restart: the loop owns this same frame.
+        velocity *= Math.exp(-dt / 90);
+        if (Math.abs(velocity) > .02) position += velocity * dt;
+        else { velocity = 0; position += dt * .028; }
+      } else velocity = 0;
     }
     wrap(); draw(); raf = requestAnimationFrame(step);
   };
@@ -152,24 +160,32 @@ function wireStream() {
   viewport.addEventListener('pointerdown', e => {
     if (e.button !== 0 || pointer !== null) return;
     pointer = e.pointerId; startX = lastX = e.clientX; startY = e.clientY; moved = false; focused = false; target = position;
+    velocity = 0; axis = null; sampleAt = performance.now();
     // Capture only once the gesture is horizontal, preserving native taps and vertical page scroll.
   });
   viewport.addEventListener('pointermove', e => {
     if (pointer !== e.pointerId) return;
     const dx = e.clientX - startX, dy = e.clientY - startY;
-    if (!moved && Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 6) { pointer = null; return; }
-    if (!moved && Math.abs(dx) < 6) return;
+    if (!axis && Math.hypot(dx, dy) <= 6) return;
+    moved = true; // Every gesture consumes its click, including a vertical pan.
+    if (!axis && Math.abs(dy) >= Math.abs(dx)) { axis = 'y'; pointer = null; velocity = 0; return; }
+    axis = 'x';
     moved = true; viewport.setPointerCapture(e.pointerId);
-    target -= e.clientX - lastX; lastX = e.clientX; manualAt = performance.now();
+    const now = performance.now(), delta = lastX - e.clientX;
+    velocity = reduce.matches ? 0 : Math.max(-2.5, Math.min(2.5, delta / Math.max(8, now - sampleAt)));
+    target += delta; lastX = e.clientX; manualAt = sampleAt = now;
   });
   const release = e => {
     if (pointer !== e.pointerId) return;
     pointer = null; target = position;
+    velocity = reduce.matches || paused || axis !== 'x' || performance.now() - manualAt >= 64 ? 0 : velocity;
     if (viewport.hasPointerCapture(e.pointerId)) viewport.releasePointerCapture(e.pointerId);
   };
   viewport.addEventListener('pointerup', release);
-  viewport.addEventListener('pointercancel', release);
-  viewport.addEventListener('lostpointercapture', release);
+  const cancel = e => { if (pointer === e.pointerId) { moved = true; release(e); velocity = 0; } };
+  viewport.addEventListener('pointercancel', cancel);
+  viewport.addEventListener('lostpointercapture', cancel);
+  viewport.addEventListener('pointerleave', e => { if (!viewport.hasPointerCapture(e.pointerId)) cancel(e); });
   viewport.addEventListener('click', e => {
     const slide = e.target.closest('.slide');
     if (moved && e.detail !== 0) { e.preventDefault(); return; }
@@ -177,11 +193,11 @@ function wireStream() {
   });
   viewport.addEventListener('wheel', e => {
     if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return; // Keep ordinary page scrolling natural.
-    e.preventDefault(); position += e.deltaX; target = position; wrap(); draw();
+    e.preventDefault(); velocity = 0; position += e.deltaX; target = position; wrap(); draw();
   }, { passive: false });
   viewport.addEventListener('keydown', e => {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
-    e.preventDefault();
+    e.preventDefault(); velocity = 0;
     position = e.key === 'Home' ? 0 : e.key === 'End' ? Math.max(0, width - viewport.clientWidth) : position + (e.key === 'ArrowRight' ? 240 : -240);
     target = position; wrap(); draw();
   });
@@ -198,11 +214,52 @@ function wireStream() {
     paused = !paused; focused = false; pause.setAttribute('aria-pressed', String(paused));
     pause.textContent = paused ? L('Pokreni', 'Play') : L('Pauziraj', 'Pause');
   };
-  const motion = () => { pause.hidden = reduce.matches; };
+  const motion = () => { pause.hidden = reduce.matches; if (reduce.matches) { velocity = 0; target = position; } };
   reduce.addEventListener('change', motion); motion();
   const observer = new ResizeObserver(resize); observer.observe(viewport); resize();
   raf = requestAnimationFrame(step);
   wireStream.cleanup = () => { cancelAnimationFrame(raf); observer.disconnect(); reduce.removeEventListener('change', motion); };
+}
+
+// Only an actual popstate to an older stamped history entry yields a back step.
+// Returning to a familiar URL by clicking a link remains forward navigation.
+function createNavigationMotion(history) {
+  let index = Number.isInteger(history.state?.sgNavIndex) ? history.state.sgNavIndex : 0;
+  let pending = 'fwd';
+  history.replaceState({ ...history.state, sgNavIndex: index }, '');
+  return {
+    onPop(event) {
+      const next = event.state?.sgNavIndex;
+      pending = Number.isInteger(next) && next < index ? 'back' : 'fwd';
+      if (Number.isInteger(next)) index = next;
+    },
+    take() {
+      if (!Number.isInteger(history.state?.sgNavIndex)) {
+        history.replaceState({ ...history.state, sgNavIndex: ++index }, '');
+      }
+      const direction = pending; pending = 'fwd'; return direction;
+    },
+  };
+}
+
+let authFilm = null;
+let splashActive = false;
+function restoreAuthFrame() {
+  const rise = document.getElementById('auth-rise');
+  if (!rise || splashActive) return;
+  if (authFilm?.dataset.finalFrame === '1') { rise.appendChild(authFilm); return; }
+  // A paused video decoded at its end is the still. No alternate image or crop.
+  const film = document.createElement('video');
+  film.muted = true; film.playsInline = true; film.preload = 'auto';
+  film.setAttribute('aria-hidden', 'true'); film.className = 'frame-loading';
+  film.addEventListener('loadedmetadata', () => {
+    if (Number.isFinite(film.duration)) film.currentTime = Math.max(0, film.duration - .001);
+  }, { once: true });
+  film.addEventListener('seeked', () => {
+    film.pause(); film.dataset.finalFrame = '1'; film.className = ''; authFilm = film;
+  }, { once: true });
+  film.src = 'assets/saiyan-rise.mp4';
+  rise.appendChild(film);
 }
 
 async function startSplash(render) {
@@ -211,6 +268,7 @@ async function startSplash(render) {
   let seen = false;
   try { seen = sessionStorage.getItem('sg.splash') === '1'; } catch (_) {}
   if (!splash || seen || reduce.matches) { splash?.remove(); await render(); return; }
+  splashActive = true;
   const video = splash.querySelector('video');
   splash.hidden = false;
   document.documentElement.classList.add('splashing');
@@ -227,7 +285,9 @@ async function startSplash(render) {
     try { sessionStorage.setItem('sg.splash', '1'); } catch (_) {}
     const rise = document.getElementById('auth-rise');
     document.documentElement.classList.remove('splashing');
-    if (!finished || !rise || reduce.matches) { splash.remove(); return; }
+    splashActive = false;
+    if (finished) { video.dataset.finalFrame = '1'; authFilm = video; }
+    if (!finished || !rise || reduce.matches) { splash.remove(); restoreAuthFrame(); return; }
     // Freeze the auth card at its FINAL geometry before measuring. Reuse the exact
     // decoded last frame and the same crop throughout; never seek or swap media.
     rise.closest('.auth-card').classList.add('splash-landed');

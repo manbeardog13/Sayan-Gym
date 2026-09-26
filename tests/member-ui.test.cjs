@@ -45,7 +45,7 @@ test('strip escapes post and plan content, including its detail payload', () => 
 
 function dockContext(role) {
   let dock;
-  const document = {querySelector:()=>null,documentElement:{classList:{remove(){}}},
+  const document = {querySelector:()=>null,documentElement:{classList:{remove(){},add(){},contains(){return true;}}},
     createElement:()=>({setAttribute(){},addEventListener(){}}), addEventListener(){},removeEventListener(){},
     body:{appendChild(el){dock=el;}}};
   return {ctx:context({document,state:{session:role ? {} : null},isStaff:()=>['admin','coach'].includes(role),isAdmin:()=>role==='admin'}),get:()=>dock};
@@ -55,41 +55,54 @@ for (const role of [null,'member','coach','admin']) test(`dock access matches ${
   for (const group of ['gym','train','me']) assert.ok(html.includes(`id="dock-${group}"`));
   assert.equal(html.includes('id="dock-staff"'),['coach','admin'].includes(role));
   assert.equal(html.includes('#/admin'),role==='admin');
-  assert.equal(html.includes('#/studio?tab=idea'),role==='admin');
+  assert.equal(html.includes('#/studio'),role==='admin');
   if (!role) assert.ok(!html.includes('href="#/log"'));
+  for (const section of ['prices','hours','contact']) assert.ok(html.includes(`section=${section}`));
+  assert.ok(html.includes('data-language')); assert.ok(html.includes('data-theme'));
+});
+test('navigation remains available on login with only one Train sign-in link', () => {
+  const {ctx,get}=dockContext(null);ctx.renderDock('#/login');
+  assert.equal((get().innerHTML.match(/href="#\/login"/g)||[]).length,1);
+  assert.ok(get().innerHTML.includes('id="dock-me"'));
 });
 
 function motionHarness(reduced = false) {
-  const events = {}, callbacks = new Map(); let id=0, now=0, capture=false, disconnected=false;
+  const events = {}, callbacks = new Map(); let id=0, now=0, capture=false, disconnected=false, opened=0;
   const media={matches:reduced,addEventListener(){},removeEventListener(){}};
   const original={getBoundingClientRect:()=>({width:900}),cloneNode:()=>({dataset:{},setAttribute(){},querySelectorAll:()=>[]})};
   const track={style:{},querySelector:()=>original,querySelectorAll:()=>[],appendChild(){}};
   const pause={setAttribute(){}};
   const viewport={clientWidth:390,querySelector:()=>track,closest:()=>({querySelector:()=>pause}),addEventListener:(n,f)=>events[n]=f,
     setPointerCapture:()=>{capture=true;},hasPointerCapture:()=>capture,releasePointerCapture:()=>{capture=false;},contains:()=>false};
-  const ctx=context({document:{querySelector:()=>viewport,hidden:false},matchMedia:()=>media,
+  const ctx=context({document:{querySelector:()=>viewport,hidden:false,createElement:()=>({showModal(){opened++;},addEventListener(){}}),body:{appendChild(){}}},whatsappLink:()=>'',matchMedia:()=>media,
     performance:{now:()=>now},requestAnimationFrame:f=>{callbacks.set(++id,f);return id;},cancelAnimationFrame:i=>callbacks.delete(i),
     ResizeObserver:class {observe(){} disconnect(){disconnected=true;}}});
   ctx.wireStream();
   const frame = () => { now+=16; const list=[...callbacks.values()]; callbacks.clear(); list.forEach(f=>f(now)); };
   const x = () => -Number(track.style.transform.match(/translate3d\(([-.\d]+)/)[1]) || 0;
   const fire = (name,props={}) => events[name]({button:0,pointerId:1,clientX:200,clientY:100,...props});
-  return {ctx,frame,x,fire,media,pause,callbacks,get disconnected(){return disconnected;}};
+  return {ctx,frame,x,fire,media,pause,callbacks,get opened(){return opened;},get disconnected(){return disconnected;}};
 }
 test('automatic strip moves right to left and wraps without hitting an edge', () => {
   const h=motionHarness(); h.frame(); const before=h.x(); h.frame(); assert.ok(h.x()>before);
   for(let i=0;i<2200;i++)h.frame(); assert.ok(h.x()>=0 && h.x()<900);
 });
-test('swipe takes over both ways with easing; release resumes leftward on the next frame', () => {
+test('swipe eases out in both directions and resumes the loop immediately at rest', () => {
   const h=motionHarness(); h.frame(); h.fire('pointerdown'); h.fire('pointermove',{clientX:140});
   const before=h.x(); h.frame(); assert.ok(h.x()>before && h.x()<before+60);
   h.fire('pointerup'); const release=h.x(); h.frame(); assert.ok(h.x()>release);
   h.fire('pointerdown'); h.fire('pointermove',{clientX:215}); const left=h.x(); h.frame(); assert.ok(h.x()<left);
-  h.fire('pointerup'); const right=h.x(); h.frame(); assert.ok(h.x()>right);
+  h.fire('pointerup'); const right=h.x(); h.frame(); assert.ok(h.x()<right);
+  let previous=h.x(), lastDelta=-Infinity, resumed=false;
+  for(let i=0;i<70;i++){h.frame();const delta=(h.x()-previous+1350)%900-450;previous=h.x();
+    if(delta>0){assert.ok(Math.abs(delta-.448)<.001);resumed=true;break;}
+    assert.ok(delta>lastDelta);lastDelta=delta;
+  }
+  assert.ok(resumed);
 });
 test('loop resumes when finger movement stops, even before finger lifts', () => {
   const h=motionHarness(); h.frame(); h.fire('pointerdown'); h.fire('pointermove',{clientX:160});
-  for(let i=0;i<6;i++)h.frame(); const before=h.x(); h.frame(); assert.ok(Math.abs(h.x()-before-.448)<.001);
+  for(let i=0;i<60;i++)h.frame(); const before=h.x(); h.frame(); assert.ok(Math.abs(h.x()-before-.448)<.001);
 });
 test('vertical gestures keep native page scrolling; cancellation resumes the loop', () => {
   const h=motionHarness(); h.frame(); h.fire('pointerdown'); h.fire('pointermove',{clientY:130});
@@ -110,9 +123,42 @@ test('pause remains paused after a swipe and cleanup cancels the animation', () 
   h.ctx.wireStream.cleanup();assert.equal(h.callbacks.size,0);assert.equal(h.disconnected,true);
 });
 
+const slideTarget={closest:()=>({dataset:{item:JSON.stringify({kind:'photo',label:'Plates',src:'assets/hero.webp'})}})};
+test('tap and keyboard activation open items; horizontal and vertical drags do not', () => {
+  const h=motionHarness();const click=()=>h.fire('click',{target:slideTarget,detail:1,preventDefault(){}});
+  h.fire('pointerdown');h.fire('pointerup');click();assert.equal(h.opened,1);
+  h.fire('pointerdown');h.fire('pointermove',{clientY:125});h.fire('pointerup');click();assert.equal(h.opened,1);
+  h.fire('pointerdown');h.fire('pointermove',{clientX:125});h.frame();h.fire('pointerup');click();assert.equal(h.opened,1);
+  h.fire('click',{target:slideTarget,detail:0});assert.equal(h.opened,2);
+  h.fire('pointerdown');h.fire('pointercancel');click();assert.equal(h.opened,2);
+  h.fire('pointerdown');h.fire('pointerup');click();assert.equal(h.opened,3);
+});
+test('turning on reduced motion during a coast stops it immediately', () => {
+  const h=motionHarness();h.frame();h.fire('pointerdown');h.fire('pointermove',{clientX:125});h.frame();h.fire('pointerup');
+  h.media.matches=true;const before=h.x();h.frame();h.frame();assert.equal(h.x(),before);
+});
+test('coasting wraps cleanly across the start of the repeated set', () => {
+  const h=motionHarness();h.frame();h.fire('pointerdown');h.fire('pointermove',{clientX:320});h.frame();h.fire('pointerup');
+  for(let i=0;i<80;i++){h.frame();assert.ok(h.x()>=0 && h.x()<900);}
+  const before=h.x();h.frame();assert.ok(Math.abs(h.x()-before-.448)<.001);
+});
+
+test('only popstate to an older history entry produces a back transition', () => {
+  const history={state:{other:'preserved'},replaceState(value){this.state=value;}};
+  const nav=context().createNavigationMotion(history);assert.equal(history.state.other,'preserved');
+  const first=history.state;assert.equal(nav.take(),'fwd');
+  history.state=null;nav.onPop({state:null});assert.equal(nav.take(),'fwd');
+  const second=history.state;
+  history.state=null;assert.equal(nav.take(),'fwd');
+  const third=history.state;
+  history.state=first;nav.onPop({state:first});assert.equal(nav.take(),'back'); // Multi-entry browser back.
+  history.state=second;nav.onPop({state:second});assert.equal(nav.take(),'fwd');
+  history.state=third;assert.equal(nav.take(),'fwd'); // Rerender without popstate never guesses backward.
+});
+
 test('splash waits for the last frame and lands the same paused video at stable card bounds', async () => {
   const events={}, order=[];let playbackResolve;
-  const video={currentTime:0,style:{},addEventListener:(n,f)=>events[n]=f,pause:()=>order.push('pause'),play:()=>Promise.resolve(),
+  const video={currentTime:0,style:{},dataset:{},addEventListener:(n,f)=>events[n]=f,pause:()=>order.push('pause'),play:()=>Promise.resolve(),
     getBoundingClientRect:()=>({left:0,top:0,width:390,height:844}),
     animate:frames=>{order.push('animate');assert.equal(frames[1].width,'310px');return {finished:new Promise(r=>playbackResolve=r)};},
     removeAttribute(){},remove(){}};
@@ -124,4 +170,27 @@ test('splash waits for the last frame and lands the same paused video at stable 
   await ctx.startSplash(async()=>{});assert.ok(!order.includes('animate'));
   const settled=events.ended();await Promise.resolve();assert.ok(order.indexOf('freeze')<order.indexOf('measure'));
   playbackResolve();await settled;assert.deepEqual(order,['pause','freeze','measure','animate','land','remove']);
+  ctx.restoreAuthFrame();assert.equal(order.at(-1),'land'); // Same decoded node returns, without a new image.
+});
+
+test('later login visits decode a paused last frame into the reserved slot', () => {
+  const events={};let inserted,paused=0;
+  const video={dataset:{},duration:6,currentTime:0,setAttribute(){},addEventListener:(name,fn)=>events[name]=fn,pause(){paused++;}};
+  const rise={appendChild:el=>inserted=el};
+  const ctx=context({document:{getElementById:()=>rise,createElement:()=>video}});
+  ctx.restoreAuthFrame();assert.equal(inserted,video);assert.equal(video.src,'assets/saiyan-rise.mp4');
+  assert.equal(video.className,'frame-loading');events.loadedmetadata();assert.equal(video.currentTime,5.999);
+  events.seeked();assert.equal(paused,1);assert.equal(video.dataset.finalFrame,'1');assert.equal(video.className,'');
+  ctx.restoreAuthFrame();assert.equal(inserted,video);assert.equal(paused,1);
+});
+test('video and byte-range requests bypass the shell cache', () => {
+  const events={};
+  vm.runInNewContext(fs.readFileSync('service-worker.js','utf8'),{
+    URL, location:{origin:'https://example.test'},self:{addEventListener:(name,fn)=>events[name]=fn},
+  });
+  for(const [path,range] of [['assets/saiyan-rise.mp4',false],['assets/saiyan-rise.mp4',true],['assets/hero.webp',true]]) {
+    let intercepted=false;
+    events.fetch({request:{url:`https://example.test/${path}`,method:'GET',headers:{has:()=>range}},respondWith(){intercepted=true;}});
+    assert.equal(intercepted,false);
+  }
 });
