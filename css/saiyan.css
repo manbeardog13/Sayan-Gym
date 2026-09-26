@@ -214,6 +214,11 @@ html.dark #mode i, html.dark .auth-theme i{background:#7ef0ff;box-shadow:0 0 12p
 .sp-mark{position:absolute;left:0;right:0;bottom:11vh;z-index:2;text-align:center;opacity:0;animation:sp-mark 1s ease 2.4s forwards}
 .sp-mark b{display:block;font:800 40px Sora;letter-spacing:.22em;color:#fff6d0;text-shadow:0 0 28px rgba(255,174,26,.85)}
 .sp-mark i{display:block;margin-top:6px;font:600 13px Sora;font-style:normal;letter-spacing:.42em;color:#7ef0ff}
+.splash.lift{background:transparent;pointer-events:none}
+.splash.lift .sp-veil,.splash.lift .sp-mark{opacity:0;transition:opacity .55s ease}
+.auth-rise{height:196px;border-radius:22px;overflow:hidden;margin:0 0 16px;background:#101114}
+.auth-rise[hidden]{display:none}
+.auth-rise video,.auth-rise img{width:100%;height:100%;object-fit:cover;object-position:center 18%;display:block}
 .splash.out{animation:splash-out .7s ease forwards;pointer-events:none}
 @keyframes sp-pic{from{opacity:0;transform:scale(1.08)}to{opacity:1;transform:scale(1)}}
 @keyframes sp-veil{0%{opacity:1}40%{opacity:.72}100%{opacity:.35}}

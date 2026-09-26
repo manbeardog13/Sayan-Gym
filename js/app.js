@@ -486,6 +486,7 @@ async function viewLogin() {
   $view.innerHTML = "";
   $auth.innerHTML = `
   <main class="auth-card">
+    <div class="auth-rise" id="auth-rise" hidden></div>
     <div class="auth-top">
       <a href="#/site" aria-label="Saiyan FITT — početna / home">${WORDMARK.replace('class="logo wordmark"', 'class="auth-logo wordmark"').replace('id="wmg"', 'id="wmg-auth"').replace("url(#wmg)", "url(#wmg-auth)")}</a>
       <a class="auth-home" href="#/site">${esc(t("nav_home"))}</a>
@@ -1531,16 +1532,49 @@ async function route() {
   if (splash && !seen && !reduce) {
     document.documentElement.classList.add("splashing");
     splash.hidden = false;
-    const done = () => {
-      if (splash.classList.contains("out")) return;
-      splash.classList.add("out");
-      document.documentElement.classList.remove("splashing");
-      setTimeout(() => splash.remove(), 720);
-      try { sessionStorage.setItem("sg.splash", "1"); } catch (e) {}
-    };
     const vid = splash.querySelector("video");
-    if (vid) vid.addEventListener("ended", done);
-    setTimeout(done, 7000);
+    const settle = () => {
+      if (splash.dataset.settled) return;
+      splash.dataset.settled = "1";
+      try { sessionStorage.setItem("sg.splash", "1"); } catch (e) {}
+      const rise = document.getElementById("auth-rise");
+      if (!vid || !rise) {
+        splash.classList.add("out");
+        document.documentElement.classList.remove("splashing");
+        setTimeout(() => splash.remove(), 700);
+        return;
+      }
+      if (vid.readyState) vid.pause();
+      rise.hidden = false;
+      const to = rise.getBoundingClientRect();
+      const from = vid.getBoundingClientRect();
+      Object.assign(vid.style, {
+        position: "fixed", left: from.left + "px", top: from.top + "px",
+        width: from.width + "px", height: from.height + "px",
+        margin: "0", zIndex: "95", objectFit: "cover", objectPosition: "center 18%",
+        borderRadius: "0px", transition: "left .85s cubic-bezier(.2,.7,.2,1), top .85s cubic-bezier(.2,.7,.2,1), width .85s cubic-bezier(.2,.7,.2,1), height .85s cubic-bezier(.2,.7,.2,1), border-radius .85s ease",
+      });
+      splash.classList.add("lift");
+      document.documentElement.classList.remove("splashing");
+      requestAnimationFrame(() => {
+        Object.assign(vid.style, {
+          left: to.left + "px", top: to.top + "px",
+          width: to.width + "px", height: to.height + "px", borderRadius: "22px",
+        });
+      });
+      const finish = (ev) => {
+        if (ev && ev.propertyName !== "width") return;
+        if (vid.parentElement === rise) return;
+        vid.removeEventListener("transitionend", finish);
+        vid.removeAttribute("style");
+        rise.appendChild(vid);
+        splash.remove();
+      };
+      vid.addEventListener("transitionend", finish);
+      setTimeout(() => finish(), 1100);
+    };
+    if (vid) vid.addEventListener("ended", settle);
+    setTimeout(settle, 7000);
   } else if (splash) splash.remove();
   route();
 })();
