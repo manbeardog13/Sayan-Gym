@@ -267,7 +267,7 @@ async function viewPostStudio() {
 
       <aside class="post-preview" aria-label="${esc(L("Pregled na Instagramu", "Instagram preview"))}">
         <div class="phone">
-          <div class="ig-head"><span class="ig-ava">S</span><b>${esc(ig.username || IG_USER)}</b><span class="ig-dots">•••</span></div>
+          <div class="ig-head"><img class="ig-ava" src="icons/icon.svg" alt="Saiyan FITT"><b>${esc(ig.username || IG_USER)}</b><span class="ig-dots">•••</span></div>
           <div class="ig-media" id="ig-media"><div class="ig-empty">${esc(L("Ovdje se prikazuje objava", "Your post shows here"))}</div></div>
           <div class="ig-dotsbar" id="ig-dotsbar"></div>
           <div class="ig-actions" aria-hidden="true">

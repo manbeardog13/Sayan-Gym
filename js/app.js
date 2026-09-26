@@ -114,7 +114,7 @@ function toggleTheme(e) {
   document.querySelector('meta[name="theme-color"]').content = dark ? "#0a0c11" : "#e9ebee";
   syncThemeSwitches();
   const b = e?.currentTarget;
-  if (b) {
+  if (b && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
     b.classList.add("kick");
     const burst = document.createElement("span");
     burst.className = "ki-burst" + (dark ? " cyan" : " gold");
@@ -167,60 +167,7 @@ document.getElementById("lang-btn").onclick = () => {
   route();
 };
 
-function renderSide(route) {
-  const root = document.documentElement;
-  document.querySelector(".side")?.remove(); document.querySelector(".side-scrim")?.remove(); document.querySelector(".sb-burger")?.remove();
-  root.classList.remove("has-side", "side-open");
-  if (!state.session || route === "#/login") return;
-  const item = (m, href, icon, label) =>
-    `<a class="sb-item${route === href ? " on" : ""}" data-m="${m}" href="${href}" title="${esc(label)}">${icon}<span class="t">${esc(label)}</span></a>`;
-  const p = state.profile || {};
-  const name = (p.display_name || state.session.user.email || "").trim();
-  const initials = name.split(/[\s@.]+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "S";
-  const role = { admin: L("Administrator", "Admin"), coach: L("Trener", "Coach"), member: L("Član", "Member") }[p.role] || "";
-  const aside = document.createElement("aside");
-  aside.className = "side"; aside.setAttribute("aria-label", L("Glavna navigacija", "Main navigation"));
-  aside.innerHTML =
-    `<div class="sb-head"><span class="sb-eyebrow">Saiyan FITT</span>
-      <button class="sb-collapse" type="button" aria-label="${L("Suzi izbornik", "Collapse menu")}"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 6l-6 6 6 6"/></svg></button></div>
-    <nav class="sb-nav">
-      ${item("dashboard", "#/app", ICO.home, t("nav_app"))}
-      ${item("checkin", "#/log", ICO.plus, t("nav_log"))}
-      ${item("customers", "#/progress", ICO.chart, t("nav_progress"))}
-      ${item("reminders", "#/profile", ICO.user, t("nav_profile"))}
-      ${isStaff() ? `<div class="sb-div"></div><div class="sb-eyebrow2">${L("Upravljanje", "Manage")}</div>
-        ${item("scan", "#/desk", ICO.scan, t("nav_coach"))}
-        ${isAdmin() ? item("users", "#/admin", ICO.gear, t("nav_admin")) + item("assistant", "#/studio", ICO.bulb, "Studio") : ""}` : ""}
-      <div class="sb-div"></div>
-      ${item("assistant", "#/site", ICO.globe, L("Web stranica", "Public site"))}
-    </nav>
-    <div class="sb-foot"><div class="sb-user">
-      <a class="sb-me" href="#/profile" title="${esc(t("nav_profile"))}"><span class="sb-ava">${esc(initials)}<span class="dot"></span></span>
-      <span class="sb-uid"><b>${esc(name)}</b><span>${esc(role)}</span></span></a>
-      <button class="sb-logout" type="button" aria-label="${esc(t("sign_out"))}" title="${esc(t("sign_out"))}" data-logout>${ICO.out}</button>
-    </div></div>`;
-  const scrim = document.createElement("div"); scrim.className = "side-scrim";
-  document.body.append(scrim, aside);
-  root.classList.add("has-side");
-  if (p.avatar_url) { const img = new Image(); img.alt = ""; img.onload = () => aside.querySelector(".sb-ava").prepend(img); img.src = p.avatar_url; }
-  try { if (localStorage.getItem("sg.side.rail") === "1") root.dataset.side = "rail"; } catch (e) {}
-  aside.querySelector(".sb-collapse").onclick = () => {
-    const rail = root.dataset.side === "rail";
-    rail ? root.removeAttribute("data-side") : (root.dataset.side = "rail");
-    try { localStorage.setItem("sg.side.rail", rail ? "0" : "1"); } catch (e) {}
-  };
-  const burger = document.createElement("button");
-  burger.className = "sb-burger"; burger.type = "button"; burger.setAttribute("aria-label", L("Izbornik", "Menu"));
-  burger.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
-  const top = document.querySelector(".top"); top.insertBefore(burger, top.firstChild);
-  burger.onclick = () => root.classList.add("side-open");
-  scrim.onclick = () => root.classList.remove("side-open");
-  aside.addEventListener("click", async (e) => {
-    if (e.target.closest("[data-logout]")) { await signOut(); return; }
-    if (e.target.closest("a.sb-item")) root.classList.remove("side-open");
-  });
-}
-addEventListener("keydown", (e) => { if (e.key === "Escape") document.documentElement.classList.remove("side-open"); });
+function renderSide(route) { renderDock(route); }
 
 /* ---------- shared fragments ---------- */
 const PHOTOS = [
@@ -294,78 +241,6 @@ function wireConcierge(quotes) {
   }
   fitNotches();
 }
-function stream(items, title, liveLabel, sub) {
-  const slide = (it, i) => `
-    <button type="button" class="slide" data-src="${esc(it.src)}" data-label="${esc(it.label)}">
-      <span class="tab-tl">${String(i + 1).padStart(2, "0")}</span>
-      <span class="thumb" style="background-image:url('${esc(it.src)}')"></span>
-      <div class="meta"><div class="who">${esc(it.label)}</div>${it.chip ? `<span class="chip">${esc(it.chip)}</span>` : ""}</div>
-    </button>`;
-  return `
-  <section class="recent reveal" style="animation-delay:350ms">
-    <div class="head"><h3>${esc(title)}</h3><span class="live"><span class="ld"></span>${esc(liveLabel)}</span></div>
-    ${sub ? `<p class="recent-sub">${esc(sub)}</p>` : ""}
-    <div class="stream" tabindex="0" aria-label="${esc(title)}">${items.map(slide).join("")}</div>
-  </section>`;
-}
-function wireStream() {
-  const scroller = document.querySelector(".stream");
-  if (!scroller || scroller.dataset.wired) return;
-  scroller.dataset.wired = "1";
-  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let down = false, moved = false, startX = 0, startY = 0, lastX = 0, lastT = 0, vx = 0, raf = 0, pressSlide = null;
-  const openSlide = (slide) => {
-    const dlg = document.createElement("dialog");
-    dlg.className = "photo-dlg";
-    dlg.innerHTML = `<form method="dialog"><button class="btn btn-ghost btn-sm" value="close">${esc(L("Zatvori", "Close"))}</button></form>
-      <img src="${esc(slide.dataset.src)}" alt="${esc(slide.dataset.label)}"><p>${esc(slide.dataset.label)}</p>`;
-    document.body.appendChild(dlg);
-    dlg.showModal();
-    dlg.addEventListener("close", () => dlg.remove());
-  };
-  const coast = () => {
-    vx *= 0.92;
-    if (Math.abs(vx) < 0.35) return;
-    scroller.scrollLeft -= vx;
-    raf = requestAnimationFrame(coast);
-  };
-  scroller.addEventListener("pointerdown", (e) => {
-    if (e.button != null && e.button !== 0) return;
-    down = true; moved = false; vx = 0;
-    pressSlide = e.target.closest(".slide");
-    startX = lastX = e.clientX; startY = e.clientY; lastT = performance.now();
-    cancelAnimationFrame(raf);
-    scroller.setPointerCapture(e.pointerId);
-  });
-  scroller.addEventListener("pointermove", (e) => {
-    if (!down) return;
-    const now = performance.now();
-    const dx = e.clientX - lastX;
-    if (Math.hypot(e.clientX - startX, e.clientY - startY) > 6) moved = true;
-    scroller.scrollLeft -= dx;
-    const dt = Math.max(8, now - lastT);
-    vx = dx / dt * 16;
-    lastX = e.clientX; lastT = now;
-  });
-  const release = (open) => {
-    if (!down) return;
-    const slide = pressSlide;
-    const tap = open && !moved && slide;
-    down = false;
-    if (!reduce) raf = requestAnimationFrame(coast);
-    if (tap) openSlide(slide);
-  };
-  scroller.addEventListener("pointerup", () => release(true));
-  scroller.addEventListener("pointercancel", () => release(false));
-  scroller.addEventListener("wheel", (e) => {
-    if (reduce || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
-    e.preventDefault();
-    cancelAnimationFrame(raf);
-    vx = e.deltaY * 0.55;
-    raf = requestAnimationFrame(coast);
-  }, { passive: false });
-}
-
 /* =========================================================
    LANDING — ASC dashboard composition, public face of the gym
    ========================================================= */
@@ -378,7 +253,7 @@ async function viewLanding() {
   const norm = (x) => x.toLowerCase().replace(/[^\p{L}]/gu, "");
   const hooks = quotes.map(quoteText).filter((x) => norm(x) !== norm(t("hero_title")));
   const realPhotos = photos.length > 0;
-  const strip = PHOTOS.map((p) => ({ src: p.src, label: L(p.hr, p.en), chip: L("trening", "training") }));
+  const strip = await loadStreamItems(plans.data || []);
   const priceRows = (plans.data || []).filter((p) => p.is_published !== false).map((p) => `
     <div class="row"><span>${esc(nameOf(p))}<br><span class="small muted">${esc(L(p.description_hr, p.description_en) || "")}</span></span>
       <b>${p.price_eur == null ? `<span class="small muted" style="font:600 12px Inter">${esc(t("on_request"))}</span>` : `${Number(p.price_eur).toFixed(0)} €`}</b></div>`).join("");
@@ -395,8 +270,8 @@ async function viewLanding() {
       <div class="cap" id="occ-cap">${esc(open ? t("open_today") + " · " + t("hours") : t("closed_now") + " · " + t("hours"))}</div>
       <div class="space"></div>
       <div class="spills">
-        <a class="spill" href="#visit"><b data-count="700">0</b><span>m² ${esc(L("opreme", "of iron"))}</span></a>
-        <a class="spill" href="#visit"><b>300+</b><span>kg ${esc(L("na šipci", "on the bar"))}</span></a>
+        <a class="spill" href="#/site?section=visit"><b data-count="700">0</b><span>m² ${esc(L("opreme", "of iron"))}</span></a>
+        <a class="spill" href="#/site?section=visit"><b>300+</b><span>kg ${esc(L("na šipci", "on the bar"))}</span></a>
         <a class="spill" href="${cfg.gym.maps}" target="_blank" rel="noopener"><b>4.8</b><span>Google · 200+</span></a>
       </div>
       <span class="tab-corner">${esc(open ? L("uživo · Lapad", "live · Lapad") : "Lapad")}</span>
@@ -422,7 +297,7 @@ async function viewLanding() {
       chips: L(["Koliko košta dnevna karta?", "Primate li MultiSport?", "Radite li nedjeljom?", "Imate li parking?", "Koja je oprema?", "Personalni trening?"],
                ["How much is a day pass?", "Do you take MultiSport?", "Open on Sundays?", "Is there parking?", "What equipment?", "Personal training?"]) })}
 
-    <section class="card slot-b reveal" style="animation-delay:270ms">
+    <section class="card slot-b reveal" id="prices" style="animation-delay:270ms">
       <span class="tab-tl">${esc(L("cijene", "prices"))}</span>
       <h3>${esc(t("prices_title"))}</h3>
       ${priceRows || `<p class="muted small">${esc(t("on_request"))}</p>`}
@@ -460,7 +335,8 @@ async function viewLanding() {
     </div>
   </section>
 
-  ${stream(strip, realPhotos ? t("gallery_title") : L("Zona snage", "Strength zone"), realPhotos ? L("teretana · Lapad", "the gym · Lapad") : L("oprema · snaga", "iron · strength"), t("equip_body"))}
+  ${stream(strip)}
+  <p class="foot builder">${esc(L("Platformu gradi Nero", "Built by Nero"))}</p>
   <p class="foot">© ${new Date().getFullYear()} Saiyan Gym FITT · Ćira Carića 1, Dubrovnik${realPhotos ? "" : ` · <a href="CREDITS.md" target="_blank" rel="noopener">${esc(L("Foto: Nenad Stojkovic (CC BY 2.0), U.S. Air Force", "Photos: Nenad Stojkovic (CC BY 2.0), U.S. Air Force"))}</a>`}</p>`;
 
   animateIn($view);
@@ -497,7 +373,7 @@ async function viewLogin() {
     <button class="btn-google" id="g-btn" type="button">${ICO.google} ${esc(t("google"))}</button>
     <div class="auth-div">${esc(t("or_email"))}</div>
     <label class="fieldx f-email"><span class="fx-ic">${ICO.mail}</span>
-      <input id="em" type="email" inputmode="email" autocomplete="email" placeholder="${esc(t("email_ph"))}"></label>
+      <input id="em" type="email" inputmode="email" autocomplete="email" aria-label="${esc(L('E-pošta', 'Email'))}" placeholder="${esc(t("email_ph"))}" required></label>
     <button class="btn-amber" id="ml-btn" type="button">${esc(t("send_link"))} ${ICO.arrow}</button>
     <p class="auth-msg" id="login-msg" role="status" aria-live="polite"></p>
     <p class="auth-legal">${esc(t("login_legal"))}</p>
@@ -523,8 +399,9 @@ async function viewLogin() {
     if (error) msg(error.message, true);
   };
   const send = async () => {
-    const email = document.getElementById("em").value.trim();
-    if (!email) return;
+    const field = document.getElementById("em");
+    if (!field.reportValidity()) return;
+    const email = field.value.trim();
     const b = document.getElementById("ml-btn"); b.disabled = true;
     const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
     b.disabled = false;
@@ -574,13 +451,13 @@ function buildTodayPlan(exercises, recovery, targets, profile) {
 async function viewDashboard() {
   $view.innerHTML = `<div class="loading">…</div>`;
   const uid = state.session.user.id;
-  const [pl, tg, rc, ms, ex, quotes, hist, news, onboard, bells] = await Promise.all([
+  const [pl, tg, rc, ms, ex, quotes, hist, news, onboard, bells, strip] = await Promise.all([
     sb.rpc("my_power_level"), sb.rpc("my_next_targets"), sb.rpc("my_recovery"),
     sb.from("memberships").select("*, membership_plans(name_hr,name_en)").eq("user_id", uid).eq("status", "active")
       .order("ends_at", { ascending: false, nullsFirst: true }).limit(1),
     loadExercises(), loadQuotes(),
     sb.from("workouts").select("id, performed_on, workout_sets(count)").eq("user_id", state.session.user.id).order("performed_on", { ascending: false }).limit(4),
-    newsFeedHtml().catch(() => ""), onboardingHtml().catch(() => ""), bellsHtml().catch(() => ""),
+    newsFeedHtml().catch(() => ""), onboardingHtml().catch(() => ""), bellsHtml().catch(() => ""), loadStreamItems(),
   ]);
   for (const r of [pl, tg, rc, ms]) if (r.error) return fail(r.error);
   const p = pl.data[0];
@@ -638,7 +515,7 @@ async function viewDashboard() {
       ${plan.list.length === 0 ? `<p class="plan-meta" style="margin-top:12px">${esc(t("today_empty"))}</p>` : ""}
     </section>
 
-    <section class="card slot-b reveal" style="animation-delay:270ms">
+    <section class="card slot-b reveal" id="prices" style="animation-delay:270ms">
       <span class="tab-tl">${esc(L("oporavak", "recovery"))}</span>
       <h3>${esc(t("recovery_title"))}</h3>
       ${["legs", "back", "chest", "shoulders", "hamstrings", "glutes", "arms"].map((g) => ({ g, pct: (recovery.find((r) => r.muscle_group === g) || {}).recovery_pct ?? 100 }))
@@ -678,6 +555,8 @@ async function viewDashboard() {
   </section>
   ${bells}
   ${news}
+  ${stream(strip)}
+  <p class="foot builder">${esc(L("Platformu gradi Nero", "Built by Nero"))}</p>
 
   <dialog class="pass-dialog" id="pass-dlg">
     <div class="pass-card">
@@ -690,7 +569,7 @@ async function viewDashboard() {
     </div>
   </dialog>`;
 
-  animateIn($view); wireInstallCoach();
+  animateIn($view); wireInstallCoach(); wireStream();
   const dlg = document.getElementById("pass-dlg");
   document.getElementById("pass-open").onclick = (e) => { e.preventDefault(); dlg.showModal(); };
   document.getElementById("pass-x").onclick = () => dlg.close();
@@ -1457,6 +1336,7 @@ function decorate() {
     lab.htmlFor = ctl.id;
   });
   $view.querySelectorAll(".page .card").forEach((c) => {
+    c.classList.add("reveal");
     if (c.querySelector(":scope > .tab-tl")) return;
     const h2 = c.querySelector(":scope > h2");
     const txt = h2 ? h2.textContent.trim() : "";
@@ -1469,7 +1349,6 @@ function decorate() {
 
 // The app opens on sign-in; signed-in members land on their dashboard.
 // The public site stays reachable at #/site.
-function viewStart() { location.replace(state.session ? "#/app" : "#/login"); }
 async function signOut() {
   await sb.auth.signOut();
   state.session = null; state.profile = null;
@@ -1480,7 +1359,7 @@ async function signOut() {
    ROUTER
    ========================================================= */
 const ROUTES = {
-  "#/": viewStart, "#/site": viewLanding, "#/login": viewLogin,
+  "#/site": viewLanding, "#/login": viewLogin,
   "#/app": viewDashboard, "#/log": viewLog, "#/progress": viewProgress, "#/profile": viewProfile, "#/desk": viewDesk, "#/admin": viewAdmin, "#/studio": viewStudio, "#/ideas": viewStudio,
 };
 const PROTECTED = new Set(["#/app", "#/log", "#/progress", "#/profile", "#/desk", "#/admin", "#/studio", "#/ideas"]);
@@ -1490,24 +1369,33 @@ let navPop = false;
 window.addEventListener("popstate", () => { navPop = true; });
 async function route() {
   let h = location.hash.split("?")[0] || "#/";
-  if (!ROUTES[h]) h = "#/";
-  const back = navPop && navTrail.length > 1 && navTrail[navTrail.length - 2] === h;
+  if (!ROUTES[h]) {
+    h = state.session ? "#/app" : "#/login";
+    history.replaceState(history.state, "", h);
+  }
+  const back = navPop && navTrail.length > 1 && navTrail[navTrail.length - 2] === location.hash;
   navPop = false;
   if (back) navTrail.pop();
-  else if (navTrail[navTrail.length - 1] !== h) navTrail.push(h);
+  else if (navTrail[navTrail.length - 1] !== location.hash) navTrail.push(location.hash);
   delete document.documentElement.dataset.nav;
   if (PROTECTED.has(h) && !state.session) { location.hash = "#/login"; return; }
   if (h !== "#/login") { document.body.classList.remove("is-auth"); $auth.innerHTML = ""; clearInterval(viewLogin._iv); }
   document.documentElement.classList.remove("side-open");
   if (h !== "#/log") leaveWorkout();
-  document.querySelectorAll("dialog.pr-dlg,dialog.plates-dlg").forEach((d) => d.remove());
+  wireStream.cleanup?.();
+  renderDock.cleanup?.();
+  document.querySelectorAll("dialog.photo-dlg,dialog.pr-dlg,dialog.plates-dlg").forEach((d) => d.remove());
   renderNav(h);
   try { await ROUTES[h](); } catch (e) { fail(e); }
   document.documentElement.dataset.nav = back ? "back" : "fwd";
   if (!["#/", "#/site", "#/app", "#/login"].includes(h)) decorate();
   fitNotches();
   if (h !== "#/login") $view.focus({ preventScroll: true });
-  window.scrollTo(0, 0);
+  const section = new URLSearchParams(location.hash.split("?")[1] || "").get("section");
+  const target = section === "prices" || section === "visit" ? document.getElementById(section) : null;
+  if (target) target.scrollIntoView({ block: "start" });
+  else window.scrollTo(0, 0);
+  if (section === "pass" && h === "#/app") document.getElementById("pass-open")?.click();
 }
 
 (async function boot() {
@@ -1525,56 +1413,5 @@ async function route() {
     if (event === "SIGNED_OUT" && location.hash !== "#/login") { state.profile = null; location.hash = "#/login"; }
   });
   window.addEventListener("hashchange", route);
-  const splash = document.getElementById("splash");
-  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let seen = false;
-  try { seen = sessionStorage.getItem("sg.splash") === "1"; } catch (e) {}
-  if (splash && !seen && !reduce) {
-    document.documentElement.classList.add("splashing");
-    splash.hidden = false;
-    const vid = splash.querySelector("video");
-    const settle = () => {
-      if (splash.dataset.settled) return;
-      splash.dataset.settled = "1";
-      try { sessionStorage.setItem("sg.splash", "1"); } catch (e) {}
-      const rise = document.getElementById("auth-rise");
-      if (!vid || !rise) {
-        splash.classList.add("out");
-        document.documentElement.classList.remove("splashing");
-        setTimeout(() => splash.remove(), 700);
-        return;
-      }
-      if (vid.readyState) vid.pause();
-      rise.hidden = false;
-      const to = rise.getBoundingClientRect();
-      const from = vid.getBoundingClientRect();
-      Object.assign(vid.style, {
-        position: "fixed", left: from.left + "px", top: from.top + "px",
-        width: from.width + "px", height: from.height + "px",
-        margin: "0", zIndex: "95", objectFit: "cover", objectPosition: "center 18%",
-        borderRadius: "0px", transition: "left .85s cubic-bezier(.2,.7,.2,1), top .85s cubic-bezier(.2,.7,.2,1), width .85s cubic-bezier(.2,.7,.2,1), height .85s cubic-bezier(.2,.7,.2,1), border-radius .85s ease",
-      });
-      splash.classList.add("lift");
-      document.documentElement.classList.remove("splashing");
-      requestAnimationFrame(() => {
-        Object.assign(vid.style, {
-          left: to.left + "px", top: to.top + "px",
-          width: to.width + "px", height: to.height + "px", borderRadius: "22px",
-        });
-      });
-      const finish = (ev) => {
-        if (ev && ev.propertyName !== "width") return;
-        if (vid.parentElement === rise) return;
-        vid.removeEventListener("transitionend", finish);
-        vid.removeAttribute("style");
-        rise.appendChild(vid);
-        splash.remove();
-      };
-      vid.addEventListener("transitionend", finish);
-      setTimeout(() => finish(), 1100);
-    };
-    if (vid) vid.addEventListener("ended", settle);
-    setTimeout(settle, 7000);
-  } else if (splash) splash.remove();
-  route();
+  await startSplash(route);
 })();
