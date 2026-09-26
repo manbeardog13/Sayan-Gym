@@ -108,11 +108,18 @@ function fitNotches(root = document) {
 addEventListener("resize", () => fitNotches());
 
 /* ---------- theme (ASC twin themes) ---------- */
-function toggleTheme() {
+function toggleTheme(e) {
   const dark = document.documentElement.classList.toggle("dark");
-  try { localStorage.setItem("sg.theme", dark ? "dark" : "light"); } catch (e) {}
-  document.querySelector('meta[name="theme-color"]').content = dark ? "#0a0c11" : "#eef0f1";
+  try { localStorage.setItem("sg.theme", dark ? "dark" : "light"); } catch (err) {}
+  document.querySelector('meta[name="theme-color"]').content = dark ? "#0a0c11" : "#e9ebee";
+  syncThemeSwitches();
+  const b = e?.currentTarget; if (b) { b.classList.add("kick"); setTimeout(() => b.classList.remove("kick"), 420); }
 }
+function syncThemeSwitches() {
+  const dark = document.documentElement.classList.contains("dark");
+  document.querySelectorAll(".auth-theme").forEach((b) => b.setAttribute("aria-checked", String(dark)));
+}
+syncThemeSwitches();
 document.getElementById("mode").onclick = toggleTheme;
 
 /* ---------- icons (ASC stroke set) ---------- */
@@ -127,6 +134,7 @@ const ICO = {
   out: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H6a2 2 0 00-2 2v12a2 2 0 002 2h3M15 8l4 4-4 4M19 12H9"/></svg>',
   arrow: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
   send: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M12 6l6 6-6 6"/></svg>',
+  bulb: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.2h5c0-.9.4-1.7 1.1-2.2A6 6 0 0 0 12 3z"/></svg>',
   mail: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="17" height="13" rx="2.5"/><path d="M4.5 7l7.5 6 7.5-6"/></svg>',
   google: '<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>',
 };
@@ -134,7 +142,7 @@ const WORDMARK = document.querySelector(".wordmark").outerHTML;
 
 /* ---------- navigation: pill (public) + ASC sidebar (signed in) ---------- */
 function renderNav(route) {
-  const pill = [["#/", t("nav_home")]];
+  const pill = [["#/site", t("nav_home")]];
   if (state.session) pill.push(["#/app", t("nav_app")]); else pill.push(["#/login", t("sign_in")]);
   document.getElementById("pill-links").innerHTML = pill
     .map(([h, l]) => `<a href="${h}" class="${route === h ? "on" : ""}">${esc(l)}</a>`).join("");
@@ -172,9 +180,9 @@ function renderSide(route) {
       ${item("reminders", "#/profile", ICO.user, t("nav_profile"))}
       ${isStaff() ? `<div class="sb-div"></div><div class="sb-eyebrow2">${L("Upravljanje", "Manage")}</div>
         ${item("scan", "#/desk", ICO.scan, t("nav_coach"))}
-        ${isAdmin() ? item("users", "#/admin", ICO.gear, t("nav_admin")) : ""}` : ""}
+        ${isAdmin() ? item("users", "#/admin", ICO.gear, t("nav_admin")) + item("assistant", "#/studio", ICO.bulb, "Studio") : ""}` : ""}
       <div class="sb-div"></div>
-      ${item("assistant", "#/", ICO.globe, L("Web stranica", "Public site"))}
+      ${item("assistant", "#/site", ICO.globe, L("Web stranica", "Public site"))}
     </nav>
     <div class="sb-foot"><div class="sb-user">
       <a class="sb-me" href="#/profile" title="${esc(t("nav_profile"))}"><span class="sb-ava">${esc(initials)}<span class="dot"></span></span>
@@ -198,7 +206,7 @@ function renderSide(route) {
   burger.onclick = () => root.classList.add("side-open");
   scrim.onclick = () => root.classList.remove("side-open");
   aside.addEventListener("click", async (e) => {
-    if (e.target.closest("[data-logout]")) { await sb.auth.signOut(); location.hash = "#/"; return; }
+    if (e.target.closest("[data-logout]")) { await signOut(); return; }
     if (e.target.closest("a.sb-item")) root.classList.remove("side-open");
   });
 }
@@ -259,7 +267,7 @@ function wireConcierge(quotes) {
     input.value = "";
   };
   document.getElementById("tbSend").onclick = () => ask(input.value);
-  input.onkeydown = (e) => e.key === "Enter" && ask(input.value);
+  input.onkeydown = (e) => { if (e.key === "Enter") ask(input.value); };
   card.querySelectorAll(".qchip").forEach((c) => (c.onclick = () => ask(c.dataset.q)));
   // rotate the three hook lines through the gym's own motivational lines
   const lines = quotes.map(quoteText).filter((x) => x.toLowerCase() !== t("hero_title").toLowerCase());
@@ -412,8 +420,8 @@ async function viewLogin() {
   $auth.innerHTML = `
   <main class="auth-card">
     <div class="auth-top">
-      <a href="#/" aria-label="Saiyan FITT — početna / home">${WORDMARK.replace('class="logo wordmark"', 'class="auth-logo wordmark"').replace('id="wmg"', 'id="wmg-auth"').replace("url(#wmg)", "url(#wmg-auth)")}</a>
-      <button class="auth-theme" id="theme" type="button" aria-label="${L("Tema", "Theme")}"><i></i></button>
+      <a href="#/site" aria-label="Saiyan FITT — početna / home">${WORDMARK.replace('class="logo wordmark"', 'class="auth-logo wordmark"').replace('id="wmg"', 'id="wmg-auth"').replace("url(#wmg)", "url(#wmg-auth)")}</a>
+      <button class="auth-theme" id="theme" type="button" role="switch" aria-checked="${document.documentElement.classList.contains("dark")}" aria-label="${L("Tamna tema", "Dark theme")}"><i></i></button>
     </div>
     <h1 class="auth-title">${esc(t("login_title"))}</h1>
     <p class="auth-sub">Saiyan Gym FITT · Lapad, Dubrovnik</p>
@@ -425,7 +433,7 @@ async function viewLogin() {
     <p class="auth-msg" id="login-msg" role="status" aria-live="polite"></p>
     <p class="auth-legal">${esc(t("login_legal"))}</p>
     <p class="auth-switch" id="lq" style="transition:opacity .4s">„${esc(quotes.length ? quoteText(quotes[0]) : "")}”</p>
-    <p class="auth-switch" style="font-size:11.5px;margin-top:6px"><button type="button" id="auth-lang">${LANG === "hr" ? "English" : "Hrvatski"}</button> · <a href="#/" style="color:inherit">${esc(t("nav_home"))}</a></p>
+    <p class="auth-switch" style="font-size:11.5px;margin-top:6px"><button type="button" id="auth-lang">${LANG === "hr" ? "English" : "Hrvatski"}</button> · <a href="#/site" style="color:inherit">${esc(t("nav_home"))}</a></p>
   </main>`;
   document.getElementById("theme").onclick = toggleTheme;
   document.getElementById("auth-lang").onclick = () => { setLang(LANG === "hr" ? "en" : "hr"); route(); };
@@ -487,12 +495,13 @@ function buildTodayPlan(exercises, recovery, targets, profile) {
 async function viewDashboard() {
   $view.innerHTML = `<div class="loading">…</div>`;
   const uid = state.session.user.id;
-  const [pl, tg, rc, ms, ex, quotes, hist] = await Promise.all([
+  const [pl, tg, rc, ms, ex, quotes, hist, news, onboard, bells] = await Promise.all([
     sb.rpc("my_power_level"), sb.rpc("my_next_targets"), sb.rpc("my_recovery"),
     sb.from("memberships").select("*, membership_plans(name_hr,name_en)").eq("user_id", uid).eq("status", "active")
       .order("ends_at", { ascending: false, nullsFirst: true }).limit(1),
     loadExercises(), loadQuotes(),
     sb.from("workouts").select("id, performed_on, workout_sets(count)").eq("user_id", state.session.user.id).order("performed_on", { ascending: false }).limit(4),
+    newsFeedHtml().catch(() => ""), onboardingHtml().catch(() => ""), bellsHtml().catch(() => ""),
   ]);
   for (const r of [pl, tg, rc, ms]) if (r.error) return fail(r.error);
   const p = pl.data[0];
@@ -507,7 +516,7 @@ async function viewDashboard() {
   const plan = buildTodayPlan(ex, recovery, targets, pr);
   const goalTxt = pr.goal ? t("goal_" + pr.goal) : "—", expTxt = pr.experience ? t("exp_" + pr.experience) : "—";
 
-  $view.innerHTML = `
+  $view.innerHTML = `${installCoachHtml()}${onboard}
   <section class="hero">
     <div class="stage reveal" style="animation-delay:110ms">
       <span class="photo" aria-hidden="true"></span><span class="scrim" aria-hidden="true"></span>
@@ -517,6 +526,7 @@ async function viewDashboard() {
       <div class="hero-num"><span data-count="${p.level}">0</span><em>${esc(t("level"))}</em></div>
       <div class="cap">${p.next_tier ? esc(t("xp_to", (p.next_tier_xp - p.xp).toLocaleString(), p.next_tier)) : esc(t("max_tier"))}</div>
       <div class="meter"><i data-w="${pct}"></i></div>
+      <div class="cap tokens">🛡 ${esc(L(`Žetoni odmora: ${p.tokens_left ?? 2} ovaj mjesec`, `Rest tokens: ${p.tokens_left ?? 2} this month`))}${p.comebacks ? ` · ⚡ ${esc(L(`Povratci: ${p.comebacks}`, `Comebacks: ${p.comebacks}`))}` : ""}</div>
       <div class="space"></div>
       <div class="spills">
         <a class="spill" href="#/progress"><b data-count="${Math.round(p.total_volume_kg / 1000)}">0</b><span>t · ${esc(t("volume"))}</span></a>
@@ -587,6 +597,8 @@ async function viewDashboard() {
         || `<p class="plan-meta">${esc(t("today_empty"))}</p>`}
     </div>
   </section>
+  ${bells}
+  ${news}
 
   <dialog class="pass-dialog" id="pass-dlg">
     <div class="pass-card">
@@ -599,7 +611,7 @@ async function viewDashboard() {
     </div>
   </dialog>`;
 
-  animateIn($view);
+  animateIn($view); wireInstallCoach();
   const dlg = document.getElementById("pass-dlg");
   document.getElementById("pass-open").onclick = (e) => { e.preventDefault(); dlg.showModal(); };
   document.getElementById("pass-x").onclick = () => dlg.close();
@@ -629,12 +641,13 @@ async function viewLog() {
     <div class="grid">
       <section class="card span-8">
         <div class="form-grid">
-          <div><label for="d">${LANG === "hr" ? "Datum" : "Date"}</label><input id="d" type="date" value="${new Date().toISOString().slice(0, 10)}"></div>
+          <div><label for="d">${LANG === "hr" ? "Datum" : "Date"}</label><input id="d" type="date" value="${todayZagreb()}"></div>
           <div><label for="ex-pick">${esc(t("exercise"))}</label>
             <select id="ex-pick"><option value="">${esc(t("pick_ex"))}</option>
               ${ex.map((e) => `<option value="${e.id}">${esc(nameOf(e))}</option>`).join("")}</select></div>
         </div>
         <div id="blocks" style="margin-top:18px"></div>
+        ${workoutBarHtml()}
         <button class="btn btn-primary" id="save" type="button" style="width:100%;margin-top:8px">${esc(t("save_workout"))}</button>
       </section>
       <section class="card span-4">
@@ -652,16 +665,18 @@ async function viewLog() {
       return `
       <div class="ex-block">
         <header><h3 style="margin:0">${esc(nameOf(e))}</h3>
-          <button class="icon-btn btn-sm" data-rmb="${bi}" type="button" aria-label="Remove">✕</button></header>
+          <span class="ex-tools"><button class="chip" data-plates="${bi}" type="button">${esc(L("Utezi", "Plates"))}</button>
+          <button class="icon-btn btn-sm" data-rmb="${bi}" type="button" aria-label="${esc(L("Ukloni vježbu", "Remove exercise"))}">✕</button></span></header>
         ${tg ? `<div class="hint">${fmtDate(tg.last_date)}: ${fmtKg(tg.last_load)} × ${tg.last_reps} → ${fmtKg(tg.suggest_load)} × ${tg.suggest_reps} · ${esc(t("advice_" + tg.advice))}</div>` : ""}
-        <div class="set-row lbl"><span></span><span>${esc(t("load"))}</span><span>${esc(t("reps"))}</span><span>${esc(t("rpe"))}</span><span></span></div>
+        <div class="set-row lbl"><span></span><span>${esc(t("load"))}</span><span>${esc(t("reps"))}</span><span>${esc(t("rpe"))}</span><span></span><span></span></div>
         ${b.sets.map((s, si) => `
-          <div class="set-row">
+          <div class="set-row${s.done ? " done" : ""}">
             <span class="set-no">${si + 1}</span>
             <input inputmode="decimal" aria-label="${esc(t("load"))}" data-b="${bi}" data-s="${si}" data-f="load" value="${s.load}">
             <input inputmode="numeric" aria-label="${esc(t("reps"))}" data-b="${bi}" data-s="${si}" data-f="reps" value="${s.reps}">
             <input inputmode="decimal" aria-label="${esc(t("rpe"))}" data-b="${bi}" data-s="${si}" data-f="rpe" value="${s.rpe}" placeholder="—">
-            <button class="icon-btn" data-rms="${bi}:${si}" type="button" aria-label="Remove set">−</button>
+            <button class="icon-btn set-done" data-done="${bi}:${si}" type="button" aria-pressed="${!!s.done}" aria-label="${esc(L("Serija gotova — pokreni odmor", "Set done — start rest"))}">✓</button>
+            <button class="icon-btn" data-rms="${bi}:${si}" type="button" aria-label="${esc(L("Ukloni seriju", "Remove set"))}">−</button>
           </div>`).join("")}
         <button class="btn btn-ghost btn-sm" data-add="${bi}" type="button">+ ${esc(t("add_set"))}</button>
       </div>`;
@@ -678,9 +693,17 @@ async function viewLog() {
     const { b, s, f } = e.target.dataset; if (b == null) return;
     blocks[b].sets[s][f] = e.target.value.replace(",", ".");
   });
+  wireWorkoutBar();
   document.getElementById("blocks").addEventListener("click", (e) => {
-    const d = e.target.dataset;
-    if (d.add != null) { const last = blocks[d.add].sets.at(-1); blocks[d.add].sets.push({ ...last }); draw(); }
+    const d = e.target.closest("button")?.dataset || {};
+    if (d.done != null) {
+      const [b, si] = d.done.split(":"), set = blocks[b].sets[si];
+      set.done = !set.done; draw();
+      if (set.done) { buzz(30); Workout.start(restFor(ex.find((x) => x.id === blocks[b].exercise_id))); }
+      return;
+    }
+    if (d.plates != null) { const cur = blocks[d.plates].sets.findLast((x) => !x.done) || blocks[d.plates].sets.at(-1); return openPlates(cur.load); }
+    if (d.add != null) { const last = blocks[d.add].sets.at(-1); blocks[d.add].sets.push({ ...last, done: false }); draw(); }
     if (d.rmb != null) { blocks.splice(d.rmb, 1); draw(); }
     if (d.rms != null) { const [b, s] = d.rms.split(":"); blocks[b].sets.splice(s, 1); if (!blocks[b].sets.length) blocks.splice(b, 1); draw(); }
   });
@@ -692,10 +715,14 @@ async function viewLog() {
     }));
     if (!rows.length) return toast(t("no_sets"));
     ev.target.disabled = true;
-    const { data: w, error } = await sb.from("workouts").insert({ performed_on: document.getElementById("d").value }).select().single();
+    const day = document.getElementById("d").value || todayZagreb();
+    const { data: w, error } = await sb.from("workouts").insert({ performed_on: day }).select().single();
     if (error) { ev.target.disabled = false; return fail(error); }
     const { error: e2 } = await sb.from("workout_sets").insert(rows.map((r) => ({ ...r, workout_id: w.id })));
-    if (e2) { ev.target.disabled = false; return fail(e2); }
+    if (e2) { await sb.from("workouts").delete().eq("id", w.id); ev.target.disabled = false; return fail(e2); }
+    leaveWorkout();
+    const prs = await findPRs(rows, day, ex).catch(() => []);
+    if (prs.length) return celebratePRs(prs);
     toast(t("saved")); location.hash = "#/app";
   };
 }
@@ -808,7 +835,7 @@ async function viewProfile() {
     </div>
   </div>`;
 
-  document.getElementById("so").onclick = async () => { await sb.auth.signOut(); location.hash = "#/"; };
+  document.getElementById("so").onclick = signOut;
   document.getElementById("save-p").onclick = async () => {
     const upd = { goal: document.getElementById("goal").value || null, experience: document.getElementById("exp").value || null };
     const { error } = await sb.from("profiles").update(upd).eq("id", state.session.user.id);
@@ -851,10 +878,10 @@ async function viewProfile() {
    ========================================================= */
 async function viewDesk() {
   if (!isStaff()) { $view.innerHTML = `<div class="page"><p>${esc(t("staff_only"))}</p></div>`; return; }
-  const [inside, radar] = await Promise.all([
+  const [inside, radar, greet] = await Promise.all([
     sb.from("check_ins").select("id, user_id, checked_in_at").is("checked_out_at", null)
       .gt("checked_in_at", new Date(Date.now() - 3 * 3600e3).toISOString()).order("checked_in_at", { ascending: false }),
-    sb.rpc("churn_radar"),
+    sb.rpc("churn_radar"), greetHtml().catch(() => ""),
   ]);
   if (inside.error) return fail(inside.error);
   const ids = [...new Set((inside.data || []).map((c) => c.user_id))];
@@ -865,6 +892,7 @@ async function viewDesk() {
   <div class="page">
     <div class="phead"><h1>${esc(t("desk_title"))}</h1></div>
     <div class="grid">
+      ${greet}
       <section class="card span-6">
         <h2>${esc(t("checkin_title"))}</h2>
         <div class="inline-form">
@@ -894,6 +922,7 @@ async function viewDesk() {
     </div>
   </div>`;
 
+  wireGreet(viewDesk);
   const checkIn = async (raw) => {
     const code = String(raw).replace(/^SAIYAN:/i, "").trim().toLowerCase();
     if (!code) return;
@@ -1005,6 +1034,15 @@ async function viewAdmin() {
         <button class="btn btn-ghost" id="add-fact" type="button">+ ${esc(t("a_add_fact"))}</button>
       </section>
 
+      <section class="card span-12" aria-labelledby="ateam" data-tab="${esc(L("tim", "team"))}">
+        <h2 id="ateam">${esc(L("Tim i uloge", "Team and roles"))}</h2>
+        <p class="muted small">${esc(L("Osoba se mora prvo jednom prijaviti. Administrator vidi sve postavke i Ideje; trener vidi recepciju.",
+          "The person must sign in once first. Admin sees all settings and Ideas; coach sees the front desk."))}</p>
+        <label for="team-q">${esc(L("Traži po imenu", "Search by name"))}</label>
+        <input id="team-q" type="search" autocomplete="off">
+        <div id="team-list"></div>
+      </section>
+
       <section class="card span-12" aria-labelledby="amot">
         <h2 id="amot">${esc(t("a_motivation"))}</h2>
         ${quotes.data.map((q) => `
@@ -1081,6 +1119,25 @@ async function viewAdmin() {
     error ? fail(error) : viewAdmin();
   };
 
+  const team = document.getElementById("team-list");
+  const ROLE = { member: L("Član", "Member"), coach: L("Trener", "Coach"), admin: L("Administrator", "Admin") };
+  const showTeam = async (q) => {
+    let req = sb.from("profiles").select("id,display_name,role").order("role").limit(20);
+    req = q ? req.ilike("display_name", `%${q.replace(/[%_]/g, "")}%`) : req.in("role", ["admin", "coach"]);
+    const { data, error } = await req; if (error) return fail(error);
+    team.innerHTML = (data || []).map((u) => `<div class="row"><span>${esc(u.display_name || "—")}</span>
+      <label class="sr-only" for="r-${u.id}">${esc(L("Uloga", "Role"))}</label>
+      <select id="r-${u.id}" data-role="${u.id}">${Object.entries(ROLE).map(([k, v]) => `<option value="${k}" ${u.role === k ? "selected" : ""}>${esc(v)}</option>`).join("")}</select></div>`).join("")
+      || `<p class="muted small">${esc(L("Nema rezultata.", "No results."))}</p>`;
+    team.querySelectorAll("[data-role]").forEach((sel) => (sel.onchange = async () => {
+      if (sel.value === "admin" && !confirm(L("Dati ovoj osobi puna administratorska prava?", "Give this person full admin rights?"))) return showTeam(q);
+      const { error } = await sb.from("profiles").update({ role: sel.value }).eq("id", sel.dataset.role);
+      error ? (fail(error), showTeam(q)) : toast(t("saved_ok"));
+    }));
+  };
+  let teamT; document.getElementById("team-q").oninput = (e) => { clearTimeout(teamT); teamT = setTimeout(() => showTeam(e.target.value.trim()), 250); };
+  showTeam("");
+
   document.querySelectorAll("[data-del-quote]").forEach((b) => (b.onclick = async () => {
     const { error } = await sb.from("motivation").delete().eq("id", b.dataset.delQuote);
     if (error) return fail(error);
@@ -1095,6 +1152,116 @@ async function viewAdmin() {
   };
 }
 
+/* ---------- ideas lab (admin): shape an idea with the agent, queue it for Claude ---------- */
+const IDEA_STATUS = {
+  drafting: ["U izradi", "Drafting"], queued: ["Poslano Claudeu", "Sent to Claude"], in_progress: ["Claude radi", "Claude is building"],
+  shipped: ["Objavljeno", "Live"], needs_toni: ["Čeka Tonija", "Waiting for Toni"], rejected: ["Odbijeno", "Declined"],
+};
+const CAT = { content: ["Tekst", "Text"], style: ["Izgled", "Look"], feature: ["Funkcija", "Feature"], data: ["Podaci i sigurnost", "Data & security"] };
+const pick = (m, k) => (m[k] ? m[k][LANG === "hr" ? 0 : 1] : k || "");
+
+async function viewIdeas(kind = "idea") {
+  if (!isAdmin()) { $view.innerHTML = `<div class="page"><p>${esc(t("staff_only"))}</p></div>`; return; }
+  const sel = new URLSearchParams(location.hash.split("?")[1] || "").get("id");
+  const bug = kind === "bug", base = `#/studio?tab=${kind}`;
+  const [threads, auto, owner] = await Promise.all([
+    sb.from("idea_threads").select("id,kind,title,status,category,brief,pr_url,result_note,updated_at").eq("kind", kind).is("archived_at", null).order("updated_at", { ascending: false }),
+    sb.from("idea_autonomy").select("*"),
+    sb.rpc("is_owner"),
+  ]);
+  if (threads.error) return fail(threads.error);
+  const cur = (threads.data || []).find((x) => x.id === sel) || null;
+  const msgs = cur ? (await sb.from("idea_messages").select("role,content").eq("thread_id", cur.id).order("id")).data || [] : [];
+  const canChat = !cur || cur.status === "drafting";
+  const autoRows = (auto.data || []).sort((a, b) => Object.keys(CAT).indexOf(a.category) - Object.keys(CAT).indexOf(b.category));
+
+  $view.innerHTML = `
+  <div class="page">
+    <div class="phead"><div><h1>Studio</h1>
+      <p class="muted">${esc(bug ? L("Prijavi grešku. Asistent pita što treba da Claude može pronaći i popraviti problem.",
+        "Report a bug. The assistant asks what Claude needs to find and fix the problem.")
+        : L("Opiši ideju za aplikaciju. Asistent postavlja pitanja dok ideja nije potpuna, a onda je šalješ Claudeu koji je izrađuje.",
+        "Describe an idea for the app. The assistant asks questions until it is complete, then you send it to Claude, who builds it."))}</p></div>
+      <a class="btn btn-ghost btn-sm" href="${base}">+ ${esc(bug ? L("Nova prijava", "New report") : L("Nova ideja", "New idea"))}</a></div>
+    ${studioTabs(kind)}
+    <div class="grid">
+      <section class="card span-8 idea-chat" aria-labelledby="ic" data-tab="${esc(L("razgovor", "chat"))}">
+        <h2 id="ic">${esc(cur ? cur.title || L("Ideja", "Idea") : bug ? L("Nova prijava greške", "New bug report") : L("Nova ideja", "New idea"))}</h2>
+        ${cur ? `<p class="small muted">${esc(pick(IDEA_STATUS, cur.status))}${cur.category ? " · " + esc(pick(CAT, cur.category)) : ""}</p>` : ""}
+        <div class="idea-log" id="idea-log" aria-live="polite">
+          ${msgs.length ? msgs.map((m) => `<div class="idea-msg ${m.role}">${esc(m.content)}</div>`).join("")
+            : `<div class="idea-msg assistant">${esc(bug ? L("Što ne radi? Reci mi na kojem ekranu i što se dogodilo.", "What's broken? Tell me which screen and what happened.")
+              : L("Bok Zrinko! Koju ideju imaš za aplikaciju ili stranicu?", "Hi Zrinko! What idea do you have for the app or the website?"))}</div>`}
+        </div>
+        ${cur?.brief ? `<details class="idea-brief" ${cur.status === "drafting" ? "open" : ""}><summary>${esc(L("Gotov opis za Claudea", "Finished brief for Claude"))}</summary>
+          <pre>${esc(JSON.stringify(cur.brief, null, 2))}</pre></details>` : ""}
+        ${cur?.result_note ? `<p class="small">${esc(cur.result_note)}${cur.pr_url ? ` · <a href="${esc(cur.pr_url)}" target="_blank" rel="noopener">GitHub</a>` : ""}</p>` : ""}
+        ${canChat ? `<form id="idea-form" class="idea-form">
+          <label class="sr-only" for="idea-in">${esc(L("Poruka", "Message"))}</label>
+          <textarea id="idea-in" rows="2" maxlength="2000" placeholder="${esc(L("Napiši poruku…", "Type a message…"))}"></textarea>
+          <button class="btn btn-primary" type="submit">${esc(L("Pošalji", "Send"))}</button>
+        </form>
+        <p class="small muted">${esc(L("Ne upisuj osobne podatke članova.", "Don't type members' personal data."))}</p>` : ""}
+        ${cur?.status === "drafting" && cur.brief ? `<button class="btn btn-primary" id="idea-queue" type="button">${esc(L("Pošalji Claudeu", "Send to Claude"))}</button>` : ""}
+        ${cur?.status === "queued" ? `<button class="btn btn-ghost btn-sm" id="idea-unqueue" type="button">${esc(L("Vrati na doradu", "Take back to edit"))}</button>` : ""}
+      </section>
+
+      <section class="card span-4" aria-labelledby="il" data-tab="${esc(L("popis", "list"))}">
+        <h2 id="il">${esc(bug ? L("Prijave", "Reports") : L("Ideje", "Ideas"))}</h2>
+        ${(threads.data || []).map((x) => `<a class="row" href="${base}&id=${x.id}"${x.id === sel ? ' aria-current="page"' : ""}>
+            <span>${esc(x.title || L("Ideja", "Idea"))}</span><span class="small muted">${esc(pick(IDEA_STATUS, x.status))}</span></a>`).join("")
+          || `<p class="muted small">${esc(bug ? L("Nema prijava.", "No reports.") : L("Još nema ideja.", "No ideas yet."))}</p>`}
+      </section>
+
+      <section class="card span-12" aria-labelledby="ia" data-tab="${esc(L("ovlasti", "autonomy"))}">
+        <h2 id="ia">${esc(L("Što Claude objavljuje sam", "What Claude ships on its own"))}</h2>
+        <p class="muted small">${esc(L("Ostalo Claude pripremi i čeka Tonijevo odobrenje. Podaci i sigurnost uvijek čekaju Tonija.",
+          "Everything else Claude prepares and waits for Toni's approval. Data and security always wait for Toni."))}</p>
+        ${autoRows.map((a) => `<label class="toggle-row"><input type="checkbox" data-auto="${a.category}" ${a.auto_ship ? "checked" : ""}
+          ${owner.data && a.category !== "data" ? "" : "disabled"}> <span>${esc(pick(CAT, a.category))}</span></label>`).join("")}
+        ${owner.data ? "" : `<p class="small muted">${esc(L("Samo Toni može mijenjati ove ovlasti.", "Only Toni can change these."))}</p>`}
+      </section>
+    </div>
+  </div>`;
+
+  const log = document.getElementById("idea-log"); log.scrollTop = log.scrollHeight;
+  const form = document.getElementById("idea-form");
+  if (form) form.onsubmit = async (e) => {
+    e.preventDefault();
+    const inp = document.getElementById("idea-in"), msg = inp.value.trim(); if (!msg) return;
+    const btn = form.querySelector("button"); btn.disabled = true; inp.disabled = true;
+    log.insertAdjacentHTML("beforeend", `<div class="idea-msg user">${esc(msg)}</div><div class="idea-msg assistant typing">…</div>`);
+    log.scrollTop = log.scrollHeight;
+    const { data, error } = await sb.functions.invoke("idea-agent", { body: { thread_id: cur?.id || null, message: msg, kind } });
+    if (error || data?.error) {
+      log.querySelector(".typing")?.remove(); btn.disabled = false; inp.disabled = false;
+      const code = data?.error || (await error?.context?.json?.().catch(() => ({})))?.error;
+      return toast({ not_configured: L("Asistent još nije uključen.", "The assistant isn't switched on yet."),
+        daily_limit: L("Dosta za danas — nastavi sutra.", "That's enough for today — continue tomorrow."),
+        thread_limit: L("Ova ideja ima previše poruka. Pošalji je ili počni novu.", "This idea has too many messages. Send it or start a new one."),
+        model_busy: L("Asistent je zauzet, pokušaj za minutu.", "The assistant is busy, try again in a minute.") }[code] || t("error") + (code || ""), 4000);
+    }
+    if (!cur) { location.hash = `${base}&id=${data.thread_id}`; return; }
+    if (data.ready) return viewIdeas(kind);
+    else { log.querySelector(".typing").textContent = data.reply; log.querySelector(".typing").classList.remove("typing");
+      inp.value = ""; btn.disabled = false; inp.disabled = false; inp.focus(); log.scrollTop = log.scrollHeight; }
+  };
+  const q = document.getElementById("idea-queue");
+  if (q) q.onclick = async () => {
+    const { error } = await sb.from("idea_threads").update({ status: "queued" }).eq("id", cur.id);
+    error ? fail(error) : (toast(L("Poslano. Claude će se javiti ovdje.", "Sent. Claude will report back here.")), viewIdeas(kind));
+  };
+  const uq = document.getElementById("idea-unqueue");
+  if (uq) uq.onclick = async () => {
+    const { error } = await sb.from("idea_threads").update({ status: "drafting" }).eq("id", cur.id);
+    error ? fail(error) : viewIdeas(kind);
+  };
+  document.querySelectorAll("[data-auto]").forEach((c) => (c.onchange = async () => {
+    const { error } = await sb.from("idea_autonomy").update({ auto_ship: c.checked, updated_at: new Date().toISOString() }).eq("category", c.dataset.auto);
+    error ? (fail(error), (c.checked = !c.checked)) : toast(t("saved_ok"));
+  }));
+}
+
 
 /* ---------- utility pages: ASC notched tab on every card ---------- */
 function decorate() {
@@ -1104,7 +1271,7 @@ function decorate() {
     [t("churn_title"), "radar"], [t("a_prices"), L("cijene", "prices")], [t("a_payment"), L("plaćanje", "payment")],
     [t("a_gallery"), L("galerija", "gallery")], [t("a_facts"), L("asistent", "assistant")], [t("a_motivation"), L("motivacija", "motivation")],
   ];
-  const fallback = { "#/log": L("unos", "entry"), "#/progress": "e1RM", "#/profile": L("profil", "profile"), "#/desk": L("recepcija", "desk"), "#/admin": L("postavke", "settings") };
+  const fallback = { "#/log": L("unos", "entry"), "#/progress": "e1RM", "#/profile": L("profil", "profile"), "#/desk": L("recepcija", "desk"), "#/admin": L("postavke", "settings"), "#/studio": "studio", "#/ideas": "studio" };
   const h = location.hash.split("?")[0];
   let n = 0;
   $view.querySelectorAll(".page label:not([for])").forEach((lab) => {
@@ -1125,14 +1292,23 @@ function decorate() {
   });
 }
 
+// The app opens on sign-in; signed-in members land on their dashboard.
+// The public site stays reachable at #/site.
+function viewStart() { location.replace(state.session ? "#/app" : "#/login"); }
+async function signOut() {
+  await sb.auth.signOut();
+  state.session = null; state.profile = null;
+  if (location.hash === "#/login") route(); else location.hash = "#/login";
+}
+
 /* =========================================================
    ROUTER
    ========================================================= */
 const ROUTES = {
-  "#/": viewLanding, "#/login": viewLogin,
-  "#/app": viewDashboard, "#/log": viewLog, "#/progress": viewProgress, "#/profile": viewProfile, "#/desk": viewDesk, "#/admin": viewAdmin,
+  "#/": viewStart, "#/site": viewLanding, "#/login": viewLogin,
+  "#/app": viewDashboard, "#/log": viewLog, "#/progress": viewProgress, "#/profile": viewProfile, "#/desk": viewDesk, "#/admin": viewAdmin, "#/studio": viewStudio, "#/ideas": viewStudio,
 };
-const PROTECTED = new Set(["#/app", "#/log", "#/progress", "#/profile", "#/desk", "#/admin"]);
+const PROTECTED = new Set(["#/app", "#/log", "#/progress", "#/profile", "#/desk", "#/admin", "#/studio", "#/ideas"]);
 
 async function route() {
   let h = location.hash.split("?")[0] || "#/";
@@ -1140,9 +1316,11 @@ async function route() {
   if (PROTECTED.has(h) && !state.session) { location.hash = "#/login"; return; }
   if (h !== "#/login") { document.body.classList.remove("is-auth"); $auth.innerHTML = ""; clearInterval(viewLogin._iv); }
   document.documentElement.classList.remove("side-open");
+  if (h !== "#/log") leaveWorkout();
+  document.querySelectorAll("dialog.pr-dlg,dialog.plates-dlg").forEach((d) => d.remove());
   renderNav(h);
   try { await ROUTES[h](); } catch (e) { fail(e); }
-  if (h !== "#/" && h !== "#/app" && h !== "#/login") decorate();
+  if (!["#/", "#/site", "#/app", "#/login"].includes(h)) decorate();
   fitNotches();
   if (h !== "#/login") $view.focus({ preventScroll: true });
   window.scrollTo(0, 0);
@@ -1156,8 +1334,11 @@ async function route() {
   sb.auth.onAuthStateChange(async (event, session) => {
     const was = !!state.session;
     state.session = session;
-    if (event === "SIGNED_IN" && !was) { await loadProfile(); location.hash = "#/app"; route(); }
-    if (event === "SIGNED_OUT") { state.profile = null; route(); }
+    if (event === "SIGNED_IN" && !was) {
+      // Supabase advises not awaiting its own calls inside this callback.
+      setTimeout(async () => { await loadProfile(); if (location.hash !== "#/app") location.hash = "#/app"; else route(); }, 0);
+    }
+    if (event === "SIGNED_OUT" && location.hash !== "#/login") { state.profile = null; location.hash = "#/login"; }
   });
   window.addEventListener("hashchange", route);
   route();

@@ -33,12 +33,8 @@ Sign in on the live site, open **Profile**, and tap **Become admin**.
 This works only while the gym has no admin, so do it before sharing the link.
 A **Settings** tab then appears in the menu.
 
-To make Zrinko or desk staff admin/coach later, run in Supabase → SQL Editor:
-
-```sql
-update public.profiles set role = 'admin'   -- or 'coach' for front-desk staff
-where id = (select id from auth.users where email = 'THEIR_EMAIL@gmail.com');
-```
+To make Zrinko admin (or desk staff coach): he signs in once, then you open **Settings → Team and roles**,
+search his name and pick *Admin*. (Requires `supabase/ideas.sql`, which also fixes the role guard so this works.)
 
 ## 4. Fill in the details later (Settings tab)
 
@@ -66,3 +62,39 @@ The pass code appears as a QR on the member's dashboard; staff scan it on the Fr
 - Whether the old Iva Vojnovića 108 location still operates.
 - Trademark clearance for "Saiyan" (EUIPO / DZIV) before more brand investment.
 
+
+## 7. Ideas lab (Zrinko → Claude)
+
+See [IDEAS_PIPELINE.md](IDEAS_PIPELINE.md): run `supabase/ideas.sql`, deploy `supabase/functions/idea-agent`,
+add the free `GEMINI_API_KEY` secret, and add yourself to `app_owners`.
+
+## 8. Studio: member news and Instagram
+
+Run `supabase/ideas.sql` (includes the `studio_posts` part) and deploy `supabase/functions/social-publish` (verify_jwt on).
+Posting to **members** works right away. **Share from phone** works without any setup: it opens the phone's
+share sheet with the finished photos (choose Instagram) and copies the caption to paste.
+
+To post **straight to Instagram** from the app (free, one-time setup, done by the account owner):
+1. In the Instagram app: make @saiyan_gym_fitt a **Professional** account (Business or Creator).
+2. developers.facebook.com → **Create app** → use case *Manage messaging & content on Instagram* →
+   **API setup with Instagram login** → add the Instagram account and **Generate token**
+   (needs the `instagram_business_content_publish` permission). Note the Instagram user ID it shows.
+   While the app is in development mode this works for accounts that have a role on the app, which is all we need.
+3. Supabase → SQL Editor (never paste the token into chat or the repo):
+   ```sql
+   insert into public.social_accounts(provider, account_id, username, access_token, expires_at)
+   values ('instagram', 'IG_USER_ID', 'saiyan_gym_fitt', 'LONG_LIVED_TOKEN', now() + interval '60 days');
+   ```
+   The token is refreshed automatically whenever you publish with less than 10 days left. If nobody posts for
+   60 days it expires; generate a new one the same way.
+
+Meta changes these screens often; if a step looks different, follow Meta's current "Instagram API with
+Instagram Login → Content publishing" guide. Instagram allows up to 100 API posts per day, JPEG only
+(the Studio exports JPEG), 1–10 photos per post.
+
+## 9. Wave 1 (engagement)
+
+Run `supabase/wave1.sql` once. It replaces `my_power_level` (new XP formula: sessions and consistent weeks
+count more than raw volume, plus comeback bonus and rest tokens), so existing members' levels will shift.
+Adds `my_onboarding`, `greet_today`, `staff_touches` and `pr_bells`. Mention the staff greet list and the PR
+bell in the privacy notice. See RESEARCH.md for the reasoning.
