@@ -214,10 +214,10 @@ addEventListener("keydown", (e) => { if (e.key === "Escape") document.documentEl
 
 /* ---------- shared fragments ---------- */
 const PHOTOS = [
-  { src: "assets/hero.webp", hr: "Ploče", en: "Plates" },
-  { src: "assets/log.webp", hr: "Mrtvo dizanje", en: "Deadlift" },
-  { src: "assets/squat.webp", hr: "Čučanj", en: "Squat" },
-  { src: "assets/checkin.webp", hr: "Bučice", en: "Dumbbells" },
+  { src: "assets/aura-hero.jpg", hr: "Energija", en: "Energy" },
+  { src: "assets/aura-bar.jpg", hr: "Šipka", en: "Bar" },
+  { src: "assets/aura-gate.jpg", hr: "Ulaz", en: "Gate" },
+  { src: "assets/aura-core.jpg", hr: "Aura", en: "Aura" },
 ];
 function greetWord() {
   const h = new Date().getHours();
@@ -337,7 +337,7 @@ async function viewLanding() {
     </div>
 
     <a class="act gold top reveal" href="${esc(buyHref)}" target="_blank" rel="noopener" style="animation-delay:150ms">
-      <span class="bg" style="background-image:url('assets/checkin.webp')"></span>
+      <span class="bg" style="background-image:url('assets/aura-gate.jpg')"></span>
       <span class="go" aria-hidden="true">${ICO.arrow}</span>
       <span class="tab-tl">${esc(L("dnevna karta", "day pass"))}</span>
       <div class="body"><div class="eyebrow"><span class="led"></span>18 € · ${esc(L("ručnik", "towel"))} 3 €</div>
@@ -345,7 +345,7 @@ async function viewLanding() {
     </a>
 
     <a class="act green bottom reveal" href="${state.session ? "#/app" : "#/login"}" style="animation-delay:190ms">
-      <span class="bg" style="background-image:url('assets/log.webp')"></span>
+      <span class="bg" style="background-image:url('assets/aura-bar.jpg')"></span>
       <span class="go" aria-hidden="true">${ICO.arrow}</span>
       <span class="tab-tl">${esc(state.session ? L("aplikacija", "app") : t("sign_in"))}</span>
       <div class="body"><div class="eyebrow"><span class="led"></span>${esc(state.session ? "Power Level" : t("sign_in"))}</div>
@@ -548,14 +548,14 @@ async function viewDashboard() {
     </div>
 
     <a class="act green top reveal" href="#/log" style="animation-delay:150ms">
-      <span class="bg" style="background-image:url('assets/log.webp')"></span>
+      <span class="bg" style="background-image:url('assets/aura-bar.jpg')"></span>
       <span class="go" aria-hidden="true">${ICO.plus}</span>
       <span class="tab-tl">${esc(L("trening", "workout"))}</span>
       <div class="body"><h2>${esc(t("start_log"))}</h2><div class="desc">${esc(plan.scheme.sets + " × " + plan.scheme.reps + " · " + plan.focus.map(muscle).join(" + "))}</div></div>
     </a>
 
     <a class="act gold bottom reveal" href="#/app" id="pass-open" style="animation-delay:190ms">
-      <span class="bg" style="background-image:url('assets/checkin.webp')"></span>
+      <span class="bg" style="background-image:url('assets/aura-gate.jpg')"></span>
       <span class="go" aria-hidden="true">${ICO.scan}</span>
       <span class="tab-tl">${esc(t("pass_title"))}</span>
       <div class="body"><h2>${esc(membership ? L("Pokaži QR na ulazu", "Show QR at the door") : t("pass_title"))}</h2>
