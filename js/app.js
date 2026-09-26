@@ -1531,12 +1531,16 @@ async function route() {
   if (splash && !seen && !reduce) {
     document.documentElement.classList.add("splashing");
     splash.hidden = false;
-    setTimeout(() => {
+    const done = () => {
+      if (splash.classList.contains("out")) return;
       splash.classList.add("out");
       document.documentElement.classList.remove("splashing");
-      setTimeout(() => splash.remove(), 520);
+      setTimeout(() => splash.remove(), 720);
       try { sessionStorage.setItem("sg.splash", "1"); } catch (e) {}
-    }, 2400);
+    };
+    const vid = splash.querySelector("video");
+    if (vid) vid.addEventListener("ended", done);
+    setTimeout(done, 7000);
   } else if (splash) splash.remove();
   route();
 })();
