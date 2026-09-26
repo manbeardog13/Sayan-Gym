@@ -212,6 +212,8 @@ on conflict (id) do nothing;
 create policy "posts img public read"  on storage.objects for select using (bucket_id = 'posts');
 create policy "posts img admin insert" on storage.objects for insert with check (bucket_id = 'posts' and public.is_admin());
 create policy "posts img admin delete" on storage.objects for delete using (bucket_id = 'posts' and public.is_admin());
+-- the Studio uploads with upsert, which also needs update
+create policy "posts img admin update" on storage.objects for update using (bucket_id = 'posts' and public.is_admin()) with check (bucket_id = 'posts' and public.is_admin());
 
 -- Instagram connection. No policies: only Edge Functions (service role) can read the token.
 create table public.social_accounts (

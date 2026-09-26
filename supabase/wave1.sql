@@ -52,28 +52,28 @@ begin
   ) t where prev is not null and best > prev;
 
   select count(*) into v_cw from (
-    select date_trunc('week', performed_on) from workouts where user_id = v_uid
-    group by 1 having count(distinct performed_on) >= 2) z;
+    select date_trunc('week', w.performed_on) from workouts w where w.user_id = v_uid
+    group by 1 having count(distinct w.performed_on) >= 2) z;
 
   select count(*) into v_cb from (
-    select performed_on - lag(performed_on) over (order by performed_on) gap
-    from (select distinct performed_on from workouts where user_id = v_uid) d) g
+    select dd.performed_on - lag(dd.performed_on) over (order by dd.performed_on) gap
+    from (select distinct w.performed_on from workouts w where w.user_id = v_uid) dd) g
   where gap >= 8;
 
   -- weekly streak with rest tokens
   v_wk := date_trunc('week', v_today)::date;
-  if not exists (select 1 from workouts where user_id = v_uid and date_trunc('week', performed_on)::date = v_wk) then
+  if not exists (select 1 from workouts w where w.user_id = v_uid and date_trunc('week', w.performed_on)::date = v_wk) then
     v_wk := v_wk - 7;   -- this week is not over yet
   end if;
   for i in 1..520 loop
-    if exists (select 1 from workouts where user_id = v_uid and date_trunc('week', performed_on)::date = v_wk) then
+    if exists (select 1 from workouts w where w.user_id = v_uid and date_trunc('week', w.performed_on)::date = v_wk) then
       v_streak := v_streak + 1; v_wk := v_wk - 7; continue;
     end if;
     exit when v_streak = 0;
     -- count empty weeks (max 2) before the next earlier training week
     v_k := 1;
-    while v_k <= 2 and not exists (select 1 from workouts where user_id = v_uid
-          and date_trunc('week', performed_on)::date = v_wk - 7 * v_k) loop v_k := v_k + 1; end loop;
+    while v_k <= 2 and not exists (select 1 from workouts w where w.user_id = v_uid
+          and date_trunc('week', w.performed_on)::date = v_wk - 7 * v_k) loop v_k := v_k + 1; end loop;
     exit when v_k > 2;
     v_ok := true;
     for j in 0..v_k - 1 loop
@@ -107,13 +107,13 @@ declare v_uid uuid := auth.uid(); v_join timestamptz; v_today date := (now() at 
   v_d int; v_c int; v_w int; v_i boolean;
 begin
   if v_uid is null then return; end if;
-  select coalesce((select min(starts_at) from memberships where user_id = v_uid), p.created_at) into v_join
-    from profiles p where p.id = v_uid;
+  select coalesce((select min(ms.starts_at) from public.memberships ms where ms.user_id = v_uid), p.created_at) into v_join
+    from public.profiles p where p.id = v_uid;
   v_d := v_today - (v_join at time zone 'Europe/Zagreb')::date;
-  select count(*) into v_c from check_ins where user_id = v_uid and checked_in_at >= v_join and checked_in_at < v_join + interval '28 days';
-  select count(*) into v_w from workouts w where w.user_id = v_uid and w.performed_on >= (v_join at time zone 'Europe/Zagreb')::date
+  select count(*) into v_c from public.check_ins c where c.user_id = v_uid and c.checked_in_at >= v_join and c.checked_in_at < v_join + interval '28 days';
+  select count(*) into v_w from public.workouts w where w.user_id = v_uid and w.performed_on >= (v_join at time zone 'Europe/Zagreb')::date
     and w.performed_on < (v_join at time zone 'Europe/Zagreb')::date + 28;
-  v_i := exists (select 1 from staff_touches where member_id = v_uid and kind = 'intro');
+  v_i := exists (select 1 from public.staff_touches st where st.member_id = v_uid and st.kind = 'intro');
   return query select v_d, v_c, v_w, v_i, (v_d <= 35 and not (v_c >= 4 and v_w >= 1 and v_i));
 end $$;
 revoke execute on function public.my_onboarding() from public, anon;
@@ -127,38 +127,39 @@ language plpgsql stable security definer set search_path = public as $$
 declare v_today date := (now() at time zone 'Europe/Zagreb')::date;
 begin
   if not public.is_staff() then raise exception 'staff only'; end if;
+  -- every column is qualified: the output names are plpgsql variables
   return query
   with m as (
     select p.id, p.display_name,
-           (coalesce((select min(ms.starts_at) from memberships ms where ms.user_id = p.id), p.created_at) at time zone 'Europe/Zagreb')::date joined
-    from profiles p where p.role = 'member'
+           (coalesce((select min(ms.starts_at) from public.memberships ms where ms.user_id = p.id), p.created_at) at time zone 'Europe/Zagreb')::date joined
+    from public.profiles p where p.role = 'member'
   ), touched as (
-    select distinct member_id from staff_touches where created_at > now() - interval '5 days'
+    select distinct st.member_id from public.staff_touches st where st.created_at > now() - interval '5 days'
   ), pr as (
-    select r.user_id, (select case when (select locale from profiles where id = r.user_id) = 'en' then e.name_en else e.name_hr end
-                       from exercises e where e.id = r.exercise_id) ex, r.d
-    from (select w.user_id, s.exercise_id, w.performed_on d, max(public.e1rm(s.load_kg, s.reps)) best,
+    select r.uid, (select case when (select pp.locale from public.profiles pp where pp.id = r.uid) = 'en' then e.name_en else e.name_hr end
+                   from public.exercises e where e.id = r.exercise_id) ex, r.d
+    from (select w.user_id uid, s.exercise_id, w.performed_on d, max(public.e1rm(s.load_kg, s.reps)) best,
                  max(max(public.e1rm(s.load_kg, s.reps))) over (partition by w.user_id, s.exercise_id order by w.performed_on
                    rows between unbounded preceding and 1 preceding) prev
-          from workouts w join workout_sets s on s.workout_id = w.id where s.reps <= 10
+          from public.workouts w join public.workout_sets s on s.workout_id = w.id where s.reps <= 10
           group by w.user_id, s.exercise_id, w.performed_on) r
     where r.d >= v_today - 3 and r.prev is not null and r.best > r.prev
-  ), c as (
+  ), c (id, name, why, info, prio) as (
     select m.id, m.display_name, 'new_' || (v_today - m.joined) || 'd', null::text, 1 from m
       where v_today - m.joined in (7, 14, 30)
     union all
-    select m.id, m.display_name, 'new_member', null, 2 from m
+    select m.id, m.display_name, 'new_member', null::text, 2 from m
       where v_today - m.joined between 0 and 3
-        and not exists (select 1 from staff_touches st where st.member_id = m.id and st.kind = 'intro')
+        and not exists (select 1 from public.staff_touches st where st.member_id = m.id and st.kind = 'intro')
     union all
-    select r.user_id, r.display_name, 'drifting', r.days_since_visit::text, case r.risk when 'high' then 1 else 3 end
-      from public.churn_radar() r where r.risk in ('high', 'medium')
+    select cr.user_id, cr.display_name, 'drifting', cr.days_since_visit::text, case cr.risk when 'high' then 1 else 3 end
+      from public.churn_radar() cr where cr.risk in ('high', 'medium')
     union all
-    select pr.user_id, m.display_name, 'pr', pr.ex, 4 from pr join m on m.id = pr.user_id
+    select pr.uid, m.display_name, 'pr', pr.ex, 4 from pr join m on m.id = pr.uid
   )
-  select distinct on (c.id) c.id, c.display_name, c.reason, c.detail, c.priority
-  from c where c.id not in (select member_id from touched)
-  order by c.id, c.priority;
+  select distinct on (c.id) c.id, c.name, c.why, c.info, c.prio
+  from c where c.id not in (select t.member_id from touched t)
+  order by c.id, c.prio;
 end $$;
 revoke execute on function public.greet_today() from public, anon;
 grant execute on function public.greet_today() to authenticated;
@@ -174,6 +175,8 @@ create table if not exists public.pr_bells (
   created_at timestamptz not null default now()
 );
 create index if not exists pr_bells_recent_idx on public.pr_bells(created_at desc);
+create index if not exists pr_bells_user_idx on public.pr_bells(user_id);
+create index if not exists pr_bells_exercise_idx on public.pr_bells(exercise_id);
 alter table public.pr_bells enable row level security;
 create policy "bells members read" on public.pr_bells for select
   using ((select auth.uid()) is not null and created_at > now() - interval '14 days');
@@ -183,11 +186,15 @@ create or replace function public.pr_bell_fill() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   new.user_id := auth.uid();
-  new.first_name := coalesce(split_part((select display_name from profiles where id = auth.uid()), ' ', 1), '');
-  if (select count(*) from pr_bells where user_id = auth.uid() and created_at > now() - interval '1 day') >= 3 then
+  new.first_name := coalesce(split_part((select p.display_name from public.profiles p where p.id = auth.uid()), ' ', 1), '');
+  if (select count(*) from public.pr_bells b where b.user_id = auth.uid() and b.created_at > now() - interval '1 day') >= 3 then
     raise exception 'bell limit';
   end if;
   return new;
 end $$;
 revoke all on function public.pr_bell_fill() from public, anon, authenticated;
 create trigger pr_bells_fill before insert on public.pr_bells for each row execute function public.pr_bell_fill();
+
+-- migration: studio_fk_indexes (advisor: unindexed foreign keys)
+create index if not exists posts_author_id_idx on public.posts(author_id);
+create index if not exists staff_touches_staff_id_idx on public.staff_touches(staff_id);
