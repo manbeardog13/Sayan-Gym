@@ -174,7 +174,63 @@ function changeLanguage() {
 }
 document.getElementById("lang-btn").onclick = changeLanguage;
 
-function renderSide(route) { renderDock(route); }
+function renderSide(route) {
+  const root = document.documentElement;
+  document.querySelector(".member-dock")?.remove();
+  document.querySelector(".side")?.remove();
+  document.querySelector(".side-scrim")?.remove();
+  document.querySelector(".sb-burger")?.remove();
+  root.classList.remove("has-member-nav", "has-side", "side-open");
+  renderDock.cleanup?.();
+  if (!state.session || route === "#/login") return;
+  const item = (m, href, icon, label) =>
+    `<a class="sb-item${route === href ? " on" : ""}" data-m="${m}" href="${href}" title="${esc(label)}">${icon}<span class="t">${esc(label)}</span></a>`;
+  const p = state.profile || {};
+  const name = (p.display_name || state.session.user.email || "").trim();
+  const initials = name.split(/[\s@.]+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "S";
+  const role = { admin: L("Administrator", "Admin"), coach: L("Trener", "Coach"), member: L("Član", "Member") }[p.role] || "";
+  const aside = document.createElement("aside");
+  aside.className = "side"; aside.setAttribute("aria-label", L("Glavna navigacija", "Main navigation"));
+  aside.innerHTML =
+    `<div class="sb-head"><span class="sb-eyebrow">Saiyan FITT</span>
+      <button class="sb-collapse" type="button" aria-label="${L("Suzi izbornik", "Collapse menu")}"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 6l-6 6 6 6"/></svg></button></div>
+    <nav class="sb-nav">
+      ${item("dashboard", "#/app", ICO.home, t("nav_app"))}
+      ${item("checkin", "#/log", ICO.plus, t("nav_log"))}
+      ${item("customers", "#/progress", ICO.chart, t("nav_progress"))}
+      ${item("reminders", "#/profile", ICO.user, t("nav_profile"))}
+      ${isStaff() ? `<div class="sb-div"></div><div class="sb-eyebrow2">${L("Upravljanje", "Manage")}</div>
+        ${item("scan", "#/desk", ICO.scan, t("nav_coach"))}
+        ${isAdmin() ? item("users", "#/admin", ICO.gear, t("nav_admin")) + item("assistant", "#/studio", ICO.bulb, "Studio") : ""}` : ""}
+      <div class="sb-div"></div>
+      ${item("assistant", "#/site", ICO.globe, L("Web stranica", "Public site"))}
+    </nav>
+    <div class="sb-foot"><div class="sb-user">
+      <a class="sb-me" href="#/profile" title="${esc(t("nav_profile"))}"><span class="sb-ava">${esc(initials)}<span class="dot"></span></span>
+      <span class="sb-uid"><b>${esc(name)}</b><span>${esc(role)}</span></span></a>
+      <button class="sb-logout" type="button" aria-label="${esc(t("sign_out"))}" title="${esc(t("sign_out"))}" data-logout>${ICO.out}</button>
+    </div></div>`;
+  const scrim = document.createElement("div"); scrim.className = "side-scrim";
+  document.body.append(scrim, aside);
+  root.classList.add("has-side");
+  if (p.avatar_url) { const img = new Image(); img.alt = ""; img.onload = () => aside.querySelector(".sb-ava").prepend(img); img.src = p.avatar_url; }
+  try { if (localStorage.getItem("sg.side.rail") === "1") root.dataset.side = "rail"; } catch (e) {}
+  aside.querySelector(".sb-collapse").onclick = () => {
+    const rail = root.dataset.side === "rail";
+    rail ? root.removeAttribute("data-side") : (root.dataset.side = "rail");
+    try { localStorage.setItem("sg.side.rail", rail ? "0" : "1"); } catch (e) {}
+  };
+  const burger = document.createElement("button");
+  burger.className = "sb-burger"; burger.type = "button"; burger.setAttribute("aria-label", L("Izbornik", "Menu"));
+  burger.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
+  const top = document.querySelector(".top"); top.insertBefore(burger, top.firstChild);
+  burger.onclick = () => root.classList.add("side-open");
+  scrim.onclick = () => root.classList.remove("side-open");
+  aside.addEventListener("click", async (e) => {
+    if (e.target.closest("[data-logout]")) { await signOut(); return; }
+    if (e.target.closest("a.sb-item")) root.classList.remove("side-open");
+  });
+}
 
 /* ---------- shared fragments ---------- */
 const PHOTOS = [

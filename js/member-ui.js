@@ -94,8 +94,7 @@ function stream(items, title = L('Treniraj. Otkrij. Ponovi.', 'Train. Discover. 
     <span class="meta"><span class="who">${esc(it.label)}</span><span class="chip">${esc(it.chip || '')}</span></span>
   </button>`).join('');
   return `<section class="recent reveal" style="animation-delay:350ms">
-    <div class="head"><h3>${esc(title)}</h3><span class="live">${esc(liveLabel)}</span>
-      <button class="stream-pause" type="button" aria-pressed="false">${esc(L('Pauziraj', 'Pause'))}</button></div>
+    <div class="head"><h3>${esc(title)}</h3><span class="live">${esc(liveLabel)}</span></div>
     <p class="recent-sub">${esc(sub)}</p>
     <div class="stream" tabindex="0" aria-label="${esc(title)}"><div class="stream-track"><div class="stream-set">${slides}</div></div></div></section>`;
 }
@@ -106,8 +105,7 @@ function wireStream() {
   if (!viewport) return;
   const track = viewport.querySelector('.stream-track'), original = track.querySelector('.stream-set');
   const reduce = matchMedia('(prefers-reduced-motion: reduce)');
-  const pause = viewport.closest('.recent').querySelector('.stream-pause');
-  let width = 0, position = 0, target = 0, last = 0, raf = 0, pointer = null, lastX = 0, startX = 0, startY = 0, moved = false, manualAt = 0, paused = false, focused = false;
+  let width = 0, position = 0, target = 0, last = 0, raf = 0, pointer = null, lastX = 0, startX = 0, startY = 0, moved = false, manualAt = 0, focused = false;
   let velocity = 0, sampleAt = 0, axis = null;
   const draw = () => { track.style.transform = `translate3d(${-position}px,0,0)`; };
   const wrap = () => {
@@ -135,7 +133,7 @@ function wireStream() {
       velocity = reduce.matches ? 0 : delta / dt;
     } else {
       target = position;
-      if (!reduce.matches && !paused && !focused && !document.hidden) {
+      if (!reduce.matches && !focused && !document.hidden) {
         // Exponential friction, in pixels/ms, is independent of display refresh rate.
         // At rest there is no delayed restart: the loop owns this same frame.
         velocity *= Math.exp(-dt / 90);
@@ -178,7 +176,7 @@ function wireStream() {
   const release = e => {
     if (pointer !== e.pointerId) return;
     pointer = null; target = position;
-    velocity = reduce.matches || paused || axis !== 'x' || performance.now() - manualAt >= 64 ? 0 : velocity;
+    velocity = reduce.matches || axis !== 'x' || performance.now() - manualAt >= 64 ? 0 : velocity;
     if (viewport.hasPointerCapture(e.pointerId)) viewport.releasePointerCapture(e.pointerId);
   };
   viewport.addEventListener('pointerup', release);
@@ -210,12 +208,8 @@ function wireStream() {
     viewport.scrollLeft = 0;
   });
   viewport.addEventListener('focusout', e => { if (!viewport.contains(e.relatedTarget)) focused = false; });
-  pause.onclick = () => {
-    paused = !paused; focused = false; pause.setAttribute('aria-pressed', String(paused));
-    pause.textContent = paused ? L('Pokreni', 'Play') : L('Pauziraj', 'Pause');
-  };
-  const motion = () => { pause.hidden = reduce.matches; if (reduce.matches) { velocity = 0; target = position; } };
-  reduce.addEventListener('change', motion); motion();
+  const motion = () => { if (reduce.matches) { velocity = 0; target = position; } };
+  reduce.addEventListener('change', motion);
   const observer = new ResizeObserver(resize); observer.observe(viewport); resize();
   raf = requestAnimationFrame(step);
   wireStream.cleanup = () => { cancelAnimationFrame(raf); observer.disconnect(); reduce.removeEventListener('change', motion); };
