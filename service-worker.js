@@ -1,5 +1,5 @@
 // Cache the app shell only. Supabase API calls always go to the network.
-const CACHE = "saiyan-v7-member";
+const CACHE = "saiyan-v8-talk";
 const SHELL = ["./", "index.html", "css/asc.css", "css/saiyan.css", "js/config.js", "js/i18n.js", "js/studio.js", "js/coach.js", "js/app.js", "icons/icon.svg", "manifest.webmanifest", "assets/hero.webp", "assets/log.webp", "assets/checkin.webp", "assets/squat.webp"];
 self.addEventListener("install", (e) => e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener("activate", (e) => e.waitUntil(

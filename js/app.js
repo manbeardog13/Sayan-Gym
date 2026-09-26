@@ -1242,26 +1242,32 @@ const pick = (m, k) => (m[k] ? m[k][LANG === "hr" ? 0 : 1] : k || "");
 
 async function viewIdeas(kind = "idea") {
   if (!isAdmin()) { $view.innerHTML = `<div class="page"><p>${esc(t("staff_only"))}</p></div>`; return; }
-  const sel = new URLSearchParams(location.hash.split("?")[1] || "").get("id");
+  const params = new URLSearchParams(location.hash.split("?")[1] || "");
+  const sel = params.get("id");
+  const archive = params.get("archive") === "1";
   const bug = kind === "bug", base = `#/studio?tab=${kind}`;
+  const archivedN = await sb.rpc("ideas_auto_archive").then((r) => r.data || 0).catch(() => 0);
+  let threadReq = sb.from("idea_threads").select("id,kind,title,status,category,brief,pr_url,result_note,updated_at,archived_at").eq("kind", kind).order("updated_at", { ascending: false });
+  threadReq = archive ? threadReq.not("archived_at", "is", null) : threadReq.is("archived_at", null);
   const [threads, auto, owner] = await Promise.all([
-    sb.from("idea_threads").select("id,kind,title,status,category,brief,pr_url,result_note,updated_at").eq("kind", kind).is("archived_at", null).order("updated_at", { ascending: false }),
+    threadReq,
     sb.from("idea_autonomy").select("*"),
     sb.rpc("is_owner"),
   ]);
   if (threads.error) return fail(threads.error);
   const cur = (threads.data || []).find((x) => x.id === sel) || null;
-  const msgs = cur ? (await sb.from("idea_messages").select("role,content").eq("thread_id", cur.id).order("id")).data || [] : [];
+  const msgs = cur ? (await sb.from("idea_messages").select("role,content,created_at").eq("thread_id", cur.id).order("id")).data || [] : [];
   const canChat = !cur || cur.status === "drafting";
   const autoRows = (auto.data || []).sort((a, b) => Object.keys(CAT).indexOf(a.category) - Object.keys(CAT).indexOf(b.category));
 
   $view.innerHTML = `
   <div class="page">
     <div class="phead"><div><h1>Studio</h1>
-      <p class="muted">${esc(bug ? L("Prijavi grešku. Asistent pita što treba da Claude može pronaći i popraviti problem.",
-        "Report a bug. The assistant asks what Claude needs to find and fix the problem.")
-        : L("Opiši ideju za aplikaciju. Asistent postavlja pitanja dok ideja nije potpuna, a onda je šalješ Claudeu koji je izrađuje.",
-        "Describe an idea for the app. The assistant asks questions until it is complete, then you send it to Claude, who builds it."))}</p></div>
+      <p class="muted">${esc(bug ? L("Prijavi grešku. Drži tipku i govori, ili piši. Možeš zalijepiti i ispraviti tekst prije slanja.",
+        "Report a bug. Hold the button and speak, or type. You can paste and correct the text before sending.")
+        : L("Zrinko, ovdje radiš dijelove aplikacije. Možeš dodati novi, promijeniti postojeći, obrisati ga, tražiti novi izgled ili vratiti obrisani. Drži tipku i govori, ili piši — tekst možeš ispraviti prije slanja.",
+        "Zrinko, this is where you shape the app. You can add a section, change one, delete one, ask for a redesign, or bring a removed one back. Hold the button and speak, or type — you can correct the text before sending."))}</p></div>
+      <a class="btn btn-ghost btn-sm" href="${archive ? base : base + "&archive=1"}">${archive ? esc(L("Aktivno", "Active")) : esc(L("Arhiva", "Archive"))}</a>
       <a class="btn btn-ghost btn-sm" href="${base}">+ ${esc(bug ? L("Nova prijava", "New report") : L("Nova ideja", "New idea"))}</a></div>
     ${studioTabs(kind)}
     <div class="grid">
@@ -1269,28 +1275,37 @@ async function viewIdeas(kind = "idea") {
         <h2 id="ic">${esc(cur ? cur.title || L("Ideja", "Idea") : bug ? L("Nova prijava greške", "New bug report") : L("Nova ideja", "New idea"))}</h2>
         ${cur ? `<p class="small muted">${esc(pick(IDEA_STATUS, cur.status))}${cur.category ? " · " + esc(pick(CAT, cur.category)) : ""}</p>` : ""}
         <div class="idea-log" id="idea-log" aria-live="polite">
-          ${msgs.length ? msgs.map((m) => `<div class="idea-msg ${m.role}">${esc(m.content)}</div>`).join("")
+          ${msgs.length ? msgs.map((m) => `<div class="idea-msg ${m.role}"><span class="small muted">${esc(m.role === "user" ? "Zrinko" : "Studio")}${m.created_at ? " · " + fmtDate(m.created_at) : ""}</span><br>${esc(m.content)}</div>`).join("")
             : `<div class="idea-msg assistant">${esc(bug ? L("Što ne radi? Reci mi na kojem ekranu i što se dogodilo.", "What's broken? Tell me which screen and what happened.")
-              : L("Bok Zrinko! Koju ideju imaš za aplikaciju ili stranicu?", "Hi Zrinko! What idea do you have for the app or the website?"))}</div>`}
+              : L("Bok Zrinko! Reci što želiš dodati, promijeniti, obrisati, preurediti ili vratiti.", "Hi Zrinko! Say what you want to add, change, delete, redesign, or bring back."))}</div>`}
         </div>
         ${cur?.brief ? `<details class="idea-brief" ${cur.status === "drafting" ? "open" : ""}><summary>${esc(L("Gotov opis za Claudea", "Finished brief for Claude"))}</summary>
           <pre>${esc(JSON.stringify(cur.brief, null, 2))}</pre></details>` : ""}
         ${cur?.result_note ? `<p class="small">${esc(cur.result_note)}${cur.pr_url ? ` · <a href="${esc(cur.pr_url)}" target="_blank" rel="noopener">GitHub</a>` : ""}</p>` : ""}
-        ${canChat ? `<form id="idea-form" class="idea-form">
+        ${canChat && !archive ? `<form id="idea-form" class="idea-form">
+          <div class="talk-row">
+            <button class="ptt" id="ptt" type="button">${esc(L("Drži i govori", "Hold to talk"))}</button>
+            <span class="ptt-live small muted" id="ptt-live"></span>
+          </div>
           <label class="sr-only" for="idea-in">${esc(L("Poruka", "Message"))}</label>
-          <textarea id="idea-in" rows="2" maxlength="2000" placeholder="${esc(L("Napiši poruku…", "Type a message…"))}"></textarea>
-          <button class="btn btn-primary" type="submit">${esc(L("Pošalji", "Send"))}</button>
+          <textarea id="idea-in" rows="3" maxlength="2000" placeholder="${esc(L("Piši, zalijepi ili ispravi što si rekao…", "Type, paste, or correct what you said…"))}"></textarea>
+          <div class="talk-tools">
+            <button class="btn btn-ghost btn-sm" id="copy-chat" type="button">${esc(L("Kopiraj razgovor", "Copy chat"))}</button>
+            <button class="btn btn-primary" type="submit">${esc(L("Pošalji", "Send"))}</button>
+          </div>
         </form>
         <p class="small muted">${esc(L("Ne upisuj osobne podatke članova.", "Don't type members' personal data."))}</p>` : ""}
         ${cur?.status === "drafting" && cur.brief ? `<button class="btn btn-primary" id="idea-queue" type="button">${esc(L("Pošalji Claudeu", "Send to Claude"))}</button>` : ""}
         ${cur?.status === "queued" ? `<button class="btn btn-ghost btn-sm" id="idea-unqueue" type="button">${esc(L("Vrati na doradu", "Take back to edit"))}</button>` : ""}
+        ${cur && !archive ? `<button class="btn btn-ghost btn-sm" id="idea-archive" type="button">${esc(L("Arhiviraj", "Archive"))}</button>` : ""}
+        ${cur && archive ? `<button class="btn btn-primary btn-sm" id="idea-unarchive" type="button">${esc(L("Vrati iz arhive", "Restore from archive"))}</button>` : ""}
       </section>
 
       <section class="card span-4" aria-labelledby="il" data-tab="${esc(L("popis", "list"))}">
-        <h2 id="il">${esc(bug ? L("Prijave", "Reports") : L("Ideje", "Ideas"))}</h2>
-        ${(threads.data || []).map((x) => `<a class="row" href="${base}&id=${x.id}"${x.id === sel ? ' aria-current="page"' : ""}>
+        <h2 id="il">${esc(archive ? L("Arhiva", "Archive") : bug ? L("Prijave", "Reports") : L("Ideje", "Ideas"))}</h2>
+        ${(threads.data || []).map((x) => `<a class="row" href="${base}${archive ? "&archive=1" : ""}&id=${x.id}"${x.id === sel ? ' aria-current="page"' : ""}>
             <span>${esc(x.title || L("Ideja", "Idea"))}</span><span class="small muted">${esc(pick(IDEA_STATUS, x.status))}</span></a>`).join("")
-          || `<p class="muted small">${esc(bug ? L("Nema prijava.", "No reports.") : L("Još nema ideja.", "No ideas yet."))}</p>`}
+          || `<p class="muted small">${esc(archive ? L("Arhiva je prazna.", "The archive is empty.") : bug ? L("Nema prijava.", "No reports.") : L("Još nema ideja.", "No ideas yet."))}</p>`}
       </section>
 
       <section class="card span-12" aria-labelledby="ia" data-tab="${esc(L("ovlasti", "autonomy"))}">
@@ -1304,8 +1319,10 @@ async function viewIdeas(kind = "idea") {
     </div>
   </div>`;
 
-  const log = document.getElementById("idea-log"); log.scrollTop = log.scrollHeight;
+  const log = document.getElementById("idea-log"); if (log) log.scrollTop = log.scrollHeight;
+  if (archivedN) toast(L(`Arhivirano razgovora: ${archivedN}.`, `Archived chats: ${archivedN}.`));
   const form = document.getElementById("idea-form");
+  if (form) wireStudioTalk(document.getElementById("idea-in"), log, msgs);
   if (form) form.onsubmit = async (e) => {
     e.preventDefault();
     const inp = document.getElementById("idea-in"), msg = inp.value.trim(); if (!msg) return;
@@ -1336,6 +1353,16 @@ async function viewIdeas(kind = "idea") {
     const { error } = await sb.from("idea_threads").update({ status: "drafting" }).eq("id", cur.id);
     error ? fail(error) : viewIdeas(kind);
   };
+  const flipArchive = async (on) => {
+    const { error } = await sb.rpc("set_idea_archive", { p_id: cur.id, p_archive: on });
+    if (error) return fail(error);
+    toast(on ? L("Razgovor je u arhivi.", "Chat archived.") : L("Razgovor je vraćen.", "Chat restored."));
+    location.hash = on ? `${base}&archive=1` : `${base}&id=${cur.id}`;
+  };
+  const arch = document.getElementById("idea-archive");
+  if (arch) arch.onclick = () => flipArchive(true);
+  const unarch = document.getElementById("idea-unarchive");
+  if (unarch) unarch.onclick = () => flipArchive(false);
   document.querySelectorAll("[data-auto]").forEach((c) => (c.onchange = async () => {
     const { error } = await sb.from("idea_autonomy").update({ auto_ship: c.checked, updated_at: new Date().toISOString() }).eq("category", c.dataset.auto);
     error ? (fail(error), (c.checked = !c.checked)) : toast(t("saved_ok"));

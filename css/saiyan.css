@@ -204,7 +204,13 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
 .idea-msg.assistant{align-self:flex-start;background:var(--surface-2,rgba(127,127,127,.12))}
 .idea-msg.user{align-self:flex-end;background:var(--accent,#ffae1a);color:#1a1405}
 .idea-msg.typing{opacity:.6}
-.idea-form{display:flex;gap:8px;align-items:flex-end}.idea-form textarea{flex:1;resize:vertical}
+.idea-form{display:flex;flex-direction:column;gap:8px;align-items:stretch}.idea-form textarea{width:100%;min-height:76px;resize:vertical}
+.talk-row{display:flex;gap:10px;align-items:center}
+.ptt{flex:none;min-height:52px;padding:0 18px;border:0;border-radius:999px;cursor:pointer;font:700 14px Inter;
+  background:#ffae1a;color:#1a1405;touch-action:none;user-select:none}
+.ptt.on{background:#c13a31;color:#fff}
+.ptt-live{min-height:1.2em}
+.talk-tools{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 .idea-brief pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 ui-monospace,monospace;max-height:320px;overflow:auto}
 
 /* ---------- Studio ---------- */

@@ -12,6 +12,68 @@ function studioTabs(active) {
   </nav>`;
 }
 function studioParams() { return new URLSearchParams(location.hash.split("?")[1] || ""); }
+
+/* Hold-to-talk fills the composer. Zrinko can still type, paste, and edit before sending. */
+function wireStudioTalk(textarea, logEl, messages) {
+  const ptt = document.getElementById("ptt");
+  const live = document.getElementById("ptt-live");
+  const copy = document.getElementById("copy-chat");
+  if (copy) copy.onclick = async () => {
+    const text = (messages || []).map((m) => `${m.role === "user" ? "Zrinko" : "Studio"}: ${m.content}`).join("\n\n");
+    try { await navigator.clipboard.writeText(text || textarea?.value || ""); toast(L("Razgovor je kopiran.", "Chat copied.")); }
+    catch (e) { toast(L("Kopiranje nije uspjelo. Označi tekst ručno.", "Copy failed. Select the text yourself.")); }
+  };
+  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!ptt || !Rec) {
+    if (ptt) ptt.hidden = true;
+    if (live) live.textContent = L("Govor nije dostupan u ovom pregledniku. Piši ili zalijepi.", "Speech isn't available in this browser. Type or paste.");
+    return;
+  }
+  const rec = new Rec();
+  rec.lang = (typeof LANG !== "undefined" && LANG === "en") ? "en-US" : "hr-HR";
+  rec.continuous = true;
+  rec.interimResults = true;
+  let holding = false, finalText = "";
+  const stop = () => {
+    holding = false; ptt.classList.remove("on");
+    try { rec.stop(); } catch (e) {}
+  };
+  rec.onresult = (ev) => {
+    let interim = "";
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      const bit = ev.results[i][0].transcript;
+      if (ev.results[i].isFinal) finalText += bit;
+      else interim += bit;
+    }
+    if (live) live.textContent = (finalText + interim).trim();
+  };
+  rec.onend = () => {
+    const said = (finalText || live?.textContent || "").trim();
+    finalText = "";
+    if (said && textarea) {
+      const cur = textarea.value.trim();
+      textarea.value = cur ? `${cur} ${said}` : said;
+      textarea.focus();
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    }
+    if (live) live.textContent = said ? L("Možeš ispraviti tekst, pa poslati.", "You can correct the text, then send.") : "";
+    ptt.classList.remove("on");
+  };
+  rec.onerror = () => { if (live) live.textContent = L("Nisam čuo. Drži tipku i govori opet, ili piši.", "I didn't hear that. Hold the button and speak again, or type."); stop(); };
+  const start = (e) => {
+    e.preventDefault();
+    if (holding) return;
+    holding = true; finalText = ""; ptt.classList.add("on");
+    if (live) live.textContent = L("Slušam…", "Listening…");
+    try { rec.start(); } catch (err) { stop(); }
+  };
+  ptt.addEventListener("pointerdown", start);
+  ptt.addEventListener("pointerup", stop);
+  ptt.addEventListener("pointercancel", stop);
+  ptt.addEventListener("pointerleave", (e) => { if (holding && e.pointerType === "mouse") stop(); });
+  ptt.addEventListener("contextmenu", (e) => e.preventDefault());
+  if (logEl) logEl.scrollTop = logEl.scrollHeight;
+}
 async function viewStudio() {
   if (!isAdmin()) { $view.innerHTML = `<div class="page"><p>${esc(t("staff_only"))}</p></div>`; return; }
   const tab = studioParams().get("tab") || "idea";
