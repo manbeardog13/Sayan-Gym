@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="hr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Saiyan Gym FITT — Dubrovnik</title>
+  <meta name="description" content="Saiyan Gym FITT, Dubrovnik (Lapad). 700 m² strength gym: Hammer Strength, lifting platforms, belt squat. Day passes, training log and Power Level.">
+  <meta name="theme-color" content="#eef0f1">
+  <script>try{if(localStorage.getItem('sg.theme')==='dark'){document.documentElement.classList.add('dark');document.querySelector('meta[name="theme-color"]').content='#0a0c11';}}catch(e){}</script>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700;800&family=Sora:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700;800&family=Sora:wght@400;500;600;700;800&display=swap"></noscript>
+  <link rel="stylesheet" href="css/asc.css">
+  <link rel="stylesheet" href="css/saiyan.css">
+</head>
+<body>
+  <span class="canvas" aria-hidden="true"></span>
+  <span class="grain" aria-hidden="true"></span>
+
+  <main class="shell" id="shell">
+    <header class="top">
+      <a class="brandlink" href="#/" aria-label="Saiyan FITT — početna / home">
+        <svg class="logo wordmark" viewBox="0 0 184 40" role="img" aria-hidden="true">
+          <defs><linearGradient id="wmg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd566"/><stop offset=".55" stop-color="#ffae1a"/><stop offset="1" stop-color="#d98600"/></linearGradient></defs>
+          <text x="2" y="31" font-family="Sora" font-weight="800" font-style="italic" font-size="31" letter-spacing="-1" fill="url(#wmg)" transform="skewX(-8)">SAIYAN</text>
+          <text x="130" y="31" font-family="Sora" font-weight="700" font-size="14" letter-spacing="3" class="wm-fitt">FITT</text>
+        </svg>
+      </a>
+      <nav class="pill" aria-label="Glavna navigacija">
+        <span class="pill-links" id="pill-links"></span>
+        <button class="lang-chip" id="lang-btn" type="button"></button>
+        <button class="mode" id="mode" type="button" aria-label="Tema"><i></i></button>
+      </nav>
+    </header>
+    <div id="view" tabindex="-1"></div>
+  </main>
+  <div id="auth-root"></div>
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+  <script defer src="js/config.js"></script>
+  <script defer src="js/i18n.js"></script>
+  <script defer src="js/app.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(() => {}));
+    }
+  </script>
+</body>
+</html>

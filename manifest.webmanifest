@@ -1,0 +1,10 @@
+{
+  "name": "Saiyan Gym FITT",
+  "short_name": "Saiyan FITT",
+  "start_url": "./#/app",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef0f1",
+  "theme_color": "#eef0f1",
+  "icons": [{ "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
