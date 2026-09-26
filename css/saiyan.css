@@ -191,3 +191,7 @@ html[data-side="rail"] .sb-me{justify-content:center}
 .auth-legal{font:500 11.5px/1.45 Inter;color:var(--muted);text-align:center;margin:14px 4px 0}
 .tb-hint{display:block;margin-top:8px;font:500 11px/1.4 Inter;color:rgba(233,224,255,.55)}
 .recent-sub{margin:-4px 4px 12px;font:500 12.5px/1.5 Inter;color:var(--muted);max-width:80ch}
+
+/* Mobile zoom lock: no pinch or double-tap zoom; 16px form text stops iOS focus auto-zoom. */
+html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+@media (max-width:820px){input,select,textarea{font-size:16px!important}}

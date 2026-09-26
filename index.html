@@ -2,7 +2,7 @@
 <html lang="hr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Saiyan Gym FITT — Dubrovnik</title>
   <meta name="description" content="Saiyan Gym FITT, Dubrovnik (Lapad). 700 m² strength gym: Hammer Strength, lifting platforms, belt squat. Day passes, training log and Power Level.">
   <meta name="theme-color" content="#eef0f1">
@@ -47,6 +47,11 @@
   <script defer src="js/i18n.js"></script>
   <script defer src="js/app.js"></script>
   <script>
+    // Zoom lock: iOS Safari ignores user-scalable=no, so block pinch and double-tap zoom here too.
+    ["gesturestart", "gesturechange", "gestureend"].forEach((ev) => document.addEventListener(ev, (e) => e.preventDefault(), { passive: false }));
+    document.addEventListener("touchmove", (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+    let lastTouchEnd = 0;
+    document.addEventListener("touchend", (e) => { const now = Date.now(); if (now - lastTouchEnd < 300) e.preventDefault(); lastTouchEnd = now; }, { passive: false });
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(() => {}));
     }
