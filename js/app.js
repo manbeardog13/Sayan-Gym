@@ -113,7 +113,17 @@ function toggleTheme(e) {
   try { localStorage.setItem("sg.theme", dark ? "dark" : "light"); } catch (err) {}
   document.querySelector('meta[name="theme-color"]').content = dark ? "#0a0c11" : "#e9ebee";
   syncThemeSwitches();
-  const b = e?.currentTarget; if (b) { b.classList.add("kick"); setTimeout(() => b.classList.remove("kick"), 420); }
+  const b = e?.currentTarget;
+  if (b) {
+    b.classList.add("kick");
+    const burst = document.createElement("span");
+    burst.className = "ki-burst" + (dark ? " cyan" : " gold");
+    const r = b.getBoundingClientRect();
+    burst.style.left = (r.left + r.width / 2) + "px";
+    burst.style.top = (r.top + r.height / 2) + "px";
+    document.body.appendChild(burst);
+    setTimeout(() => { b.classList.remove("kick"); burst.remove(); }, 700);
+  }
 }
 function syncThemeSwitches() {
   const dark = document.documentElement.classList.contains("dark");
@@ -214,10 +224,10 @@ addEventListener("keydown", (e) => { if (e.key === "Escape") document.documentEl
 
 /* ---------- shared fragments ---------- */
 const PHOTOS = [
-  { src: "assets/aura-hero.jpg", hr: "Energija", en: "Energy" },
-  { src: "assets/aura-bar.jpg", hr: "Šipka", en: "Bar" },
-  { src: "assets/aura-gate.jpg", hr: "Ulaz", en: "Gate" },
-  { src: "assets/aura-core.jpg", hr: "Aura", en: "Aura" },
+  { src: "assets/hero.webp", hr: "Ploče", en: "Plates" },
+  { src: "assets/log.webp", hr: "Mrtvo dizanje", en: "Deadlift" },
+  { src: "assets/squat.webp", hr: "Čučanj", en: "Squat" },
+  { src: "assets/checkin.webp", hr: "Bučice", en: "Dumbbells" },
 ];
 function greetWord() {
   const h = new Date().getHours();
@@ -286,16 +296,73 @@ function wireConcierge(quotes) {
 }
 function stream(items, title, liveLabel, sub) {
   const slide = (it, i) => `
-    <div class="slide"><span class="tab-tl">${String(i + 1).padStart(2, "0")}</span>
+    <button type="button" class="slide" data-src="${esc(it.src)}" data-label="${esc(it.label)}">
+      <span class="tab-tl">${String(i + 1).padStart(2, "0")}</span>
       <span class="thumb" style="background-image:url('${esc(it.src)}')"></span>
-      <div class="meta"><div class="who">${esc(it.label)}</div>${it.chip ? `<span class="chip">${esc(it.chip)}</span>` : ""}</div></div>`;
-  const track = items.map(slide).join("");
+      <div class="meta"><div class="who">${esc(it.label)}</div>${it.chip ? `<span class="chip">${esc(it.chip)}</span>` : ""}</div>
+    </button>`;
   return `
   <section class="recent reveal" style="animation-delay:350ms">
     <div class="head"><h3>${esc(title)}</h3><span class="live"><span class="ld"></span>${esc(liveLabel)}</span></div>
     ${sub ? `<p class="recent-sub">${esc(sub)}</p>` : ""}
-    <div class="stream"><div class="stream-track">${track}${track.replace(/<div class="slide">/g, '<div class="slide" aria-hidden="true">')}</div></div>
+    <div class="stream" tabindex="0" aria-label="${esc(title)}">${items.map(slide).join("")}</div>
   </section>`;
+}
+function wireStream() {
+  const scroller = document.querySelector(".stream");
+  if (!scroller || scroller.dataset.wired) return;
+  scroller.dataset.wired = "1";
+  let down = false, moved = false, startX = 0, lastX = 0, lastT = 0, vx = 0, raf = 0, pressSlide = null;
+  const openSlide = (slide) => {
+    const dlg = document.createElement("dialog");
+    dlg.className = "photo-dlg";
+    dlg.innerHTML = `<form method="dialog"><button class="btn btn-ghost btn-sm" value="close">${esc(L("Zatvori", "Close"))}</button></form>
+      <img src="${esc(slide.dataset.src)}" alt="${esc(slide.dataset.label)}"><p>${esc(slide.dataset.label)}</p>`;
+    document.body.appendChild(dlg);
+    dlg.showModal();
+    dlg.addEventListener("close", () => dlg.remove());
+  };
+  const coast = () => {
+    vx *= 0.92;
+    if (Math.abs(vx) < 0.35) return;
+    scroller.scrollLeft -= vx;
+    raf = requestAnimationFrame(coast);
+  };
+  scroller.addEventListener("pointerdown", (e) => {
+    if (e.button != null && e.button !== 0) return;
+    down = true; moved = false; vx = 0;
+    pressSlide = e.target.closest(".slide");
+    startX = lastX = e.clientX; lastT = performance.now();
+    cancelAnimationFrame(raf);
+    scroller.setPointerCapture(e.pointerId);
+  });
+  scroller.addEventListener("pointermove", (e) => {
+    if (!down) return;
+    const now = performance.now();
+    const dx = e.clientX - lastX;
+    if (Math.abs(e.clientX - startX) > 6) moved = true;
+    scroller.scrollLeft -= dx;
+    const dt = Math.max(8, now - lastT);
+    vx = dx / dt * 16;
+    lastX = e.clientX; lastT = now;
+  });
+  const end = () => {
+    if (!down) return;
+    const slide = pressSlide;
+    const tap = !moved && slide;
+    down = false;
+    raf = requestAnimationFrame(coast);
+    if (tap) openSlide(slide);
+  };
+  scroller.addEventListener("pointerup", end);
+  scroller.addEventListener("pointercancel", end);
+  scroller.addEventListener("wheel", (e) => {
+    if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+    e.preventDefault();
+    cancelAnimationFrame(raf);
+    vx = e.deltaY * 0.55;
+    raf = requestAnimationFrame(coast);
+  }, { passive: false });
 }
 
 /* =========================================================
@@ -310,9 +377,7 @@ async function viewLanding() {
   const norm = (x) => x.toLowerCase().replace(/[^\p{L}]/gu, "");
   const hooks = quotes.map(quoteText).filter((x) => norm(x) !== norm(t("hero_title")));
   const realPhotos = photos.length > 0;
-  const strip = realPhotos
-    ? photos.slice(0, 12).map((p) => ({ src: p.url, label: "Saiyan Gym FITT", chip: "Lapad" }))
-    : PHOTOS.map((p) => ({ src: p.src, label: L(p.hr, p.en), chip: L("trening", "training") }));
+  const strip = PHOTOS.map((p) => ({ src: p.src, label: L(p.hr, p.en), chip: L("trening", "training") }));
   const priceRows = (plans.data || []).filter((p) => p.is_published !== false).map((p) => `
     <div class="row"><span>${esc(nameOf(p))}<br><span class="small muted">${esc(L(p.description_hr, p.description_en) || "")}</span></span>
       <b>${p.price_eur == null ? `<span class="small muted" style="font:600 12px Inter">${esc(t("on_request"))}</span>` : `${Number(p.price_eur).toFixed(0)} €`}</b></div>`).join("");
@@ -337,7 +402,7 @@ async function viewLanding() {
     </div>
 
     <a class="act gold top reveal" href="${esc(buyHref)}" target="_blank" rel="noopener" style="animation-delay:150ms">
-      <span class="bg" style="background-image:url('assets/aura-gate.jpg')"></span>
+      <span class="bg" style="background-image:url('assets/checkin.webp')"></span>
       <span class="go" aria-hidden="true">${ICO.arrow}</span>
       <span class="tab-tl">${esc(L("dnevna karta", "day pass"))}</span>
       <div class="body"><div class="eyebrow"><span class="led"></span>18 € · ${esc(L("ručnik", "towel"))} 3 €</div>
@@ -345,7 +410,7 @@ async function viewLanding() {
     </a>
 
     <a class="act green bottom reveal" href="${state.session ? "#/app" : "#/login"}" style="animation-delay:190ms">
-      <span class="bg" style="background-image:url('assets/aura-bar.jpg')"></span>
+      <span class="bg" style="background-image:url('assets/log.webp')"></span>
       <span class="go" aria-hidden="true">${ICO.arrow}</span>
       <span class="tab-tl">${esc(state.session ? L("aplikacija", "app") : t("sign_in"))}</span>
       <div class="body"><div class="eyebrow"><span class="led"></span>${esc(state.session ? "Power Level" : t("sign_in"))}</div>
@@ -399,6 +464,7 @@ async function viewLanding() {
 
   animateIn($view);
   wireConcierge(quotes);
+  wireStream();
 
   sb.rpc("current_occupancy").then(({ data, error }) => {
     const n = document.getElementById("occ"), cap = document.getElementById("occ-cap");
@@ -548,14 +614,14 @@ async function viewDashboard() {
     </div>
 
     <a class="act green top reveal" href="#/log" style="animation-delay:150ms">
-      <span class="bg" style="background-image:url('assets/aura-bar.jpg')"></span>
+      <span class="bg" style="background-image:url('assets/log.webp')"></span>
       <span class="go" aria-hidden="true">${ICO.plus}</span>
       <span class="tab-tl">${esc(L("trening", "workout"))}</span>
       <div class="body"><h2>${esc(t("start_log"))}</h2><div class="desc">${esc(plan.scheme.sets + " × " + plan.scheme.reps + " · " + plan.focus.map(muscle).join(" + "))}</div></div>
     </a>
 
     <a class="act gold bottom reveal" href="#/app" id="pass-open" style="animation-delay:190ms">
-      <span class="bg" style="background-image:url('assets/aura-gate.jpg')"></span>
+      <span class="bg" style="background-image:url('assets/checkin.webp')"></span>
       <span class="go" aria-hidden="true">${ICO.scan}</span>
       <span class="tab-tl">${esc(t("pass_title"))}</span>
       <div class="body"><h2>${esc(membership ? L("Pokaži QR na ulazu", "Show QR at the door") : t("pass_title"))}</h2>
@@ -1417,9 +1483,14 @@ const ROUTES = {
 };
 const PROTECTED = new Set(["#/app", "#/log", "#/progress", "#/profile", "#/desk", "#/admin", "#/studio", "#/ideas"]);
 
+const navTrail = [];
 async function route() {
   let h = location.hash.split("?")[0] || "#/";
   if (!ROUTES[h]) h = "#/";
+  const back = navTrail.length > 1 && navTrail[navTrail.length - 2] === h;
+  if (back) navTrail.pop();
+  else if (navTrail[navTrail.length - 1] !== h) navTrail.push(h);
+  delete document.documentElement.dataset.nav;
   if (PROTECTED.has(h) && !state.session) { location.hash = "#/login"; return; }
   if (h !== "#/login") { document.body.classList.remove("is-auth"); $auth.innerHTML = ""; clearInterval(viewLogin._iv); }
   document.documentElement.classList.remove("side-open");
@@ -1427,6 +1498,7 @@ async function route() {
   document.querySelectorAll("dialog.pr-dlg,dialog.plates-dlg").forEach((d) => d.remove());
   renderNav(h);
   try { await ROUTES[h](); } catch (e) { fail(e); }
+  document.documentElement.dataset.nav = back ? "back" : "fwd";
   if (!["#/", "#/site", "#/app", "#/login"].includes(h)) decorate();
   fitNotches();
   if (h !== "#/login") $view.focus({ preventScroll: true });
@@ -1448,5 +1520,19 @@ async function route() {
     if (event === "SIGNED_OUT" && location.hash !== "#/login") { state.profile = null; location.hash = "#/login"; }
   });
   window.addEventListener("hashchange", route);
+  const splash = document.getElementById("splash");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let seen = false;
+  try { seen = sessionStorage.getItem("sg.splash") === "1"; } catch (e) {}
+  if (splash && !seen && !reduce) {
+    document.documentElement.classList.add("splashing");
+    splash.hidden = false;
+    setTimeout(() => {
+      splash.classList.add("out");
+      document.documentElement.classList.remove("splashing");
+      setTimeout(() => splash.remove(), 520);
+      try { sessionStorage.setItem("sg.splash", "1"); } catch (e) {}
+    }, 2400);
+  } else if (splash) splash.remove();
   route();
 })();

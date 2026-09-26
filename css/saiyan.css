@@ -179,23 +179,42 @@ a.hstat b{color:var(--ink)} a.hstat b.g{color:var(--green-ink)}
   .hero .act.top{order:1} .hero .slot-a{order:2} .hero .act.bottom{order:3} .hero .stage{order:4} .hero .slot-b{order:5} }
 .wm.is-idle{display:none}
 
-/* Saiyan energy: gold aura, one motion, quiet chrome. */
-.stage .photo{background-image:url('../assets/aura-hero.jpg');animation:saiyan-drift 22s ease-in-out infinite alternate}
-.stage::after{content:"";position:absolute;left:8%;right:8%;bottom:6%;height:42%;z-index:1;pointer-events:none;
-  background:url('../assets/aura-core.jpg') center/contain no-repeat;mix-blend-mode:screen;opacity:.38;
-  animation:saiyan-aura 3.2s ease-in-out infinite}
-.stage .scrim{background:
-  linear-gradient(180deg,rgba(6,7,10,.2),rgba(6,7,10,.55) 70%,rgba(6,7,10,.82)),
-  linear-gradient(90deg,rgba(6,7,10,.72),rgba(6,7,10,.15))}
-.meter i{background:linear-gradient(90deg,#fff6d0,#ffae1a 45%,#fff);box-shadow:0 0 16px rgba(255,174,26,.85);animation:saiyan-meter 2.4s ease-in-out infinite}
-#view{animation:saiyan-rise .5s cubic-bezier(.2,.7,.2,1) both}
-.act .bg{background-size:cover;background-position:center;animation:saiyan-drift 26s ease-in-out infinite alternate}
-@keyframes saiyan-drift{from{transform:scale(1.05)}to{transform:scale(1.14) translate3d(-2%,-1%,0)}}
-@keyframes saiyan-aura{0%,100%{opacity:.28;transform:scale(1)}50%{opacity:.62;transform:scale(1.05)}}
-@keyframes saiyan-meter{0%,100%{filter:brightness(1)}50%{filter:brightness(1.35)}}
-@keyframes saiyan-rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+/* Real training photos stay. Motion is the entrance, the back step, and the Saiyan controls. */
+.reveal{animation:card-fall .62s cubic-bezier(.16,.84,.32,1) both}
+@keyframes card-fall{from{opacity:0;transform:translateY(-22px) scale(.985)}to{opacity:1;transform:none}}
+html[data-nav="fwd"] #view{animation:step-fwd .42s cubic-bezier(.2,.7,.2,1) both}
+html[data-nav="back"] #view{animation:step-back .42s cubic-bezier(.2,.7,.2,1) both}
+@keyframes step-fwd{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+@keyframes step-back{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:none}}
+.stream{display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;scroll-behavior:auto;cursor:grab;touch-action:pan-y;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)}
+.stream:active{cursor:grabbing}
+.stream-track{animation:none}
+.stream .slide{border:0;font:inherit;text-align:left;cursor:pointer}
+.photo-dlg{border:0;padding:0;background:#07080c;color:#f4f5f7;border-radius:18px;max-width:min(920px,92vw)}
+.photo-dlg img{display:block;width:100%;max-height:74vh;object-fit:cover}
+.photo-dlg p,.photo-dlg form{margin:0;padding:10px 14px}
+.photo-dlg::backdrop{background:rgba(2,3,5,.72)}
+.meter i{background:linear-gradient(90deg,#fff6d0,#ffae1a 55%,#7ef0ff);box-shadow:0 0 14px rgba(255,174,26,.7)}
+#mode i, .auth-theme i{border-radius:50%;background:#ffd566;box-shadow:0 0 10px #ffae1a;transition:background .45s ease, box-shadow .45s ease, transform .45s cubic-bezier(.2,.8,.2,1)}
+html.dark #mode i, html.dark .auth-theme i{background:#7ef0ff;box-shadow:0 0 12px #7ef0ff}
+#mode.kick, .auth-theme.kick{animation:ki-pop .55s ease}
+@keyframes ki-pop{0%{transform:scale(1)}35%{transform:scale(1.18)}100%{transform:scale(1)}}
+.ki-burst{position:fixed;width:12px;height:12px;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:80}
+.ki-burst.gold{background:radial-gradient(circle,#fff 0,#ffd566 28%,transparent 70%);animation:ki-flash .7s ease forwards}
+.ki-burst.cyan{background:radial-gradient(circle,#fff 0,#7ef0ff 30%,transparent 70%);animation:ki-flash .7s ease forwards}
+@keyframes ki-flash{from{opacity:1;width:12px;height:12px}to{opacity:0;width:280px;height:280px}}
+.splash[hidden]{display:none}
+.splash{position:fixed;inset:0;z-index:90;display:grid;place-items:end center;background:#07080c;animation:splash-in .4s ease both}
+.splash img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;animation:saiyan-drift 2.4s ease-in-out both}
+.splash b{position:relative;z-index:1;margin-bottom:12vh;font:800 42px Sora;letter-spacing:.18em;color:#fff6d0;text-shadow:0 0 24px #ffae1a}
+.splash.out{animation:splash-out .5s ease forwards}
+@keyframes splash-in{from{opacity:0}to{opacity:1}}
+@keyframes splash-out{to{opacity:0;visibility:hidden}}
+@keyframes saiyan-drift{from{transform:scale(1.08)}to{transform:scale(1)}}
 @media (prefers-reduced-motion:reduce){
-  .stage .photo,.stage::after,#view,.act .bg,.meter i{animation:none}
+  .reveal,#view,.splash img,.meter i{animation:none}
+  .splash{display:none}
 }
 .toggle-row label{text-transform:none;letter-spacing:0;font:500 13.5px/1.45 Inter;color:var(--ink);margin:0}
 
