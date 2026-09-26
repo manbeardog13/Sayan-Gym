@@ -27,8 +27,8 @@ Built on the same architecture as ASC: a static, no-build PWA on GitHub Pages wi
 - **Churn radar:** members at risk of leaving (absence, falling visits, expiring pass, first 90 days), so Zrinko can send a personal message.
 
 **Ideas** (admin)
-- Zrinko shapes an idea with a Gemini-powered interviewer; the finished brief goes to a scheduled Claude routine
-  that builds it. Text and style changes ship on their own; bigger changes wait for Toni. See IDEAS_PIPELINE.md.
+- Zrinko shapes an idea with a Gemini-powered interviewer; the finished brief goes to Nero,
+  who builds the platform. Text and style changes ship on their own; bigger changes wait for Toni. See IDEAS_PIPELINE.md.
 
 The app opens on the sign-in screen; the public site is at `#/site`. Pinch and double-tap zoom are disabled.
 

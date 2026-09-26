@@ -65,7 +65,7 @@ The pass code appears as a QR on the member's dashboard; staff scan it on the Fr
 - Trademark clearance for "Saiyan" (EUIPO / DZIV) before more brand investment.
 
 
-## 7. Ideas lab (Zrinko → Claude)
+## 7. Ideas lab (Zrinko → Nero)
 
 See [IDEAS_PIPELINE.md](IDEAS_PIPELINE.md): run `supabase/ideas.sql`, deploy `supabase/functions/idea-agent`,
 add the free `GEMINI_API_KEY` secret, and add yourself to `app_owners`.

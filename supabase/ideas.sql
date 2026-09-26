@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Ideas lab (migration: ideas_lab)
 -- Admins (Zrinko) shape an idea with the idea agent; a finished brief is
--- queued for Claude, which implements it on a schedule.
+-- queued for Nero, which implements it on a schedule.
 -- Autonomy is per category and can only be raised by an owner (Toni):
 -- owners live in app_owners, which no API role can write.
 -- =====================================================================
@@ -18,7 +18,7 @@ $$;
 revoke execute on function public.is_owner() from public, anon;
 grant execute on function public.is_owner() to authenticated;
 
--- What Claude may ship without Toni. 'data' (database, security rules, auth,
+-- What Nero may ship without Toni. 'data' (database, security rules, auth,
 -- roles, payments, health data) is never auto-shipped, whatever this table says.
 create table public.idea_autonomy (
   category text primary key check (category in ('content','style','feature','data')),
@@ -43,8 +43,8 @@ create table public.idea_threads (
     check (status in ('drafting','queued','in_progress','shipped','needs_toni','rejected')),
   category text check (category in ('content','style','feature','data')),
   brief jsonb,                 -- final brief written by the idea agent
-  pr_url text,                 -- set by Claude
-  result_note text,            -- set by Claude: what shipped or why it waits
+  pr_url text,                 -- set by Nero
+  result_note text,            -- set by Nero: what shipped or why it waits
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   archived_at timestamptz
@@ -64,7 +64,7 @@ create index idea_messages_thread_idx on public.idea_messages(thread_id, id);
 alter table public.idea_threads  enable row level security;
 alter table public.idea_messages enable row level security;
 -- Admins see all ideas; they create their own and may only move a thread
--- from drafting to queued (or back while nobody picked it up). Claude writes
+-- from drafting to queued (or back while nobody picked it up). Nero writes
 -- with the service role, which bypasses RLS.
 create policy "ideas admin read"   on public.idea_threads for select using (public.is_admin());
 create policy "ideas admin create" on public.idea_threads for insert
@@ -75,7 +75,7 @@ create policy "ideas author queue" on public.idea_threads for update
 create policy "idea msgs admin read" on public.idea_messages for select using (public.is_admin());
 -- messages are written only by the idea-agent Edge Function (service role).
 
--- Authors cannot set Claude's fields or choose their own risk category.
+-- Authors cannot set Nero's fields or choose their own risk category.
 -- Deliberately NOT security definer: current_user must be the calling role.
 create or replace function public.guard_idea_write() returns trigger
 language plpgsql set search_path = public as $$
@@ -91,7 +91,7 @@ begin
   if new.brief is distinct from old.brief or new.category is distinct from old.category
      or new.pr_url is distinct from old.pr_url or new.result_note is distinct from old.result_note
      or new.archived_at is distinct from old.archived_at or new.author_id is distinct from old.author_id then
-    raise exception 'only the idea agent or Claude can change these fields';
+    raise exception 'only the idea agent or Nero can change these fields';
   end if;
   if new.status = 'queued' and old.brief is null then
     raise exception 'finish the conversation first: the brief is not ready';
@@ -103,7 +103,7 @@ revoke all on function public.guard_idea_write() from public, anon, authenticate
 create trigger idea_threads_guard before insert or update on public.idea_threads
   for each row execute function public.guard_idea_write();
 
--- Hygiene, run by the scheduled Claude routine (service role):
+-- Hygiene, run by the scheduled Nero routine (service role):
 -- archive finished ideas after 14 days, drop their chat after 90.
 create or replace function public.ideas_housekeeping()
 returns table (archived int, purged int) language plpgsql security definer set search_path = public as $$

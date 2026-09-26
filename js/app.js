@@ -1232,9 +1232,9 @@ async function viewAdmin() {
   };
 }
 
-/* ---------- ideas lab (admin): shape an idea with the agent, queue it for Claude ---------- */
+/* ---------- ideas lab (admin): shape an idea with the agent, queue it for Nero ---------- */
 const IDEA_STATUS = {
-  drafting: ["U izradi", "Drafting"], queued: ["Poslano Claudeu", "Sent to Claude"], in_progress: ["Claude radi", "Claude is building"],
+  drafting: ["U izradi", "Drafting"], queued: ["Poslano Nerou", "Sent to Nero"], in_progress: ["Nero radi", "Nero is building"],
   shipped: ["Objavljeno", "Live"], needs_toni: ["Čeka Tonija", "Waiting for Toni"], rejected: ["Odbijeno", "Declined"],
 };
 const CAT = { content: ["Tekst", "Text"], style: ["Izgled", "Look"], feature: ["Funkcija", "Feature"], data: ["Podaci i sigurnost", "Data & security"] };
@@ -1279,7 +1279,7 @@ async function viewIdeas(kind = "idea") {
             : `<div class="idea-msg assistant">${esc(bug ? L("Što ne radi? Reci mi na kojem ekranu i što se dogodilo.", "What's broken? Tell me which screen and what happened.")
               : L("Bok Zrinko! Reci što želiš dodati, promijeniti, obrisati, preurediti ili vratiti.", "Hi Zrinko! Say what you want to add, change, delete, redesign, or bring back."))}</div>`}
         </div>
-        ${cur?.brief ? `<details class="idea-brief" ${cur.status === "drafting" ? "open" : ""}><summary>${esc(L("Gotov opis za Claudea", "Finished brief for Claude"))}</summary>
+        ${cur?.brief ? `<details class="idea-brief" ${cur.status === "drafting" ? "open" : ""}><summary>${esc(L("Gotov opis za Nero", "Finished brief for Nero"))}</summary>
           <pre>${esc(JSON.stringify(cur.brief, null, 2))}</pre></details>` : ""}
         ${cur?.result_note ? `<p class="small">${esc(cur.result_note)}${cur.pr_url ? ` · <a href="${esc(cur.pr_url)}" target="_blank" rel="noopener">GitHub</a>` : ""}</p>` : ""}
         ${canChat && !archive ? `<form id="idea-form" class="idea-form">
@@ -1295,7 +1295,7 @@ async function viewIdeas(kind = "idea") {
           </div>
         </form>
         <p class="small muted">${esc(L("Ne upisuj osobne podatke članova.", "Don't type members' personal data."))}</p>` : ""}
-        ${cur?.status === "drafting" && cur.brief ? `<button class="btn btn-primary" id="idea-queue" type="button">${esc(L("Pošalji Claudeu", "Send to Claude"))}</button>` : ""}
+        ${cur?.status === "drafting" && cur.brief ? `<button class="btn btn-primary" id="idea-queue" type="button">${esc(L("Pošalji Nerou", "Send to Nero"))}</button>` : ""}
         ${cur?.status === "queued" ? `<button class="btn btn-ghost btn-sm" id="idea-unqueue" type="button">${esc(L("Vrati na doradu", "Take back to edit"))}</button>` : ""}
         ${cur && !archive ? `<button class="btn btn-ghost btn-sm" id="idea-archive" type="button">${esc(L("Arhiviraj", "Archive"))}</button>` : ""}
         ${cur && archive ? `<button class="btn btn-primary btn-sm" id="idea-unarchive" type="button">${esc(L("Vrati iz arhive", "Restore from archive"))}</button>` : ""}
@@ -1309,9 +1309,9 @@ async function viewIdeas(kind = "idea") {
       </section>
 
       <section class="card span-12" aria-labelledby="ia" data-tab="${esc(L("ovlasti", "autonomy"))}">
-        <h2 id="ia">${esc(L("Što Claude objavljuje sam", "What Claude ships on its own"))}</h2>
-        <p class="muted small">${esc(L("Ostalo Claude pripremi i čeka Tonijevo odobrenje. Podaci i sigurnost uvijek čekaju Tonija.",
-          "Everything else Claude prepares and waits for Toni's approval. Data and security always wait for Toni."))}</p>
+        <h2 id="ia">${esc(L("Što Nero objavljuje sam", "What Nero ships on its own"))}</h2>
+        <p class="muted small">${esc(L("Ostalo Nero pripremi i čeka Tonijevo odobrenje. Podaci i sigurnost uvijek čekaju Tonija.",
+          "Everything else Nero prepares and waits for Toni's approval. Data and security always wait for Toni."))}</p>
         ${autoRows.map((a) => `<label class="toggle-row"><input type="checkbox" data-auto="${a.category}" ${a.auto_ship ? "checked" : ""}
           ${owner.data && a.category !== "data" ? "" : "disabled"}> <span>${esc(pick(CAT, a.category))}</span></label>`).join("")}
         ${owner.data ? "" : `<p class="small muted">${esc(L("Samo Toni može mijenjati ove ovlasti.", "Only Toni can change these."))}</p>`}
@@ -1346,7 +1346,7 @@ async function viewIdeas(kind = "idea") {
   const q = document.getElementById("idea-queue");
   if (q) q.onclick = async () => {
     const { error } = await sb.from("idea_threads").update({ status: "queued" }).eq("id", cur.id);
-    error ? fail(error) : (toast(L("Poslano. Claude će se javiti ovdje.", "Sent. Claude will report back here.")), viewIdeas(kind));
+    error ? fail(error) : (toast(L("Poslano. Nero će se javiti ovdje.", "Sent. Nero will report back here.")), viewIdeas(kind));
   };
   const uq = document.getElementById("idea-unqueue");
   if (uq) uq.onclick = async () => {

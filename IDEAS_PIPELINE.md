@@ -1,4 +1,4 @@
-# Studio pipeline: Zrinko → idea agent → Claude
+# Studio pipeline: Zrinko → idea agent → Nero
 
 Studio has three modes: **Idea** and **Bug** go through this pipeline; **Post** (member news and Instagram)
 is published directly from the app by an admin and never touches code (see SETUP.md §8).
@@ -7,27 +7,27 @@ is published directly from the app by an admin and never touches code (see SETUP
 2. The **idea agent** (Edge Function `idea-agent`, Google Gemini) asks one question at a time until the
    idea is complete, then writes a brief (problem, where in the app, behaviour, HR/EN texts, edge cases,
    acceptance checks, category).
-3. Zrinko taps **Send to Claude**. The idea is `queued`.
-4. A scheduled Claude Code routine picks up queued ideas, implements them, and reports back on the idea
+3. Zrinko taps **Send to Nero**. The idea is `queued`.
+4. Nero picks up queued ideas, builds them, and reports back on the idea
    (status, note, PR link), which Zrinko sees in the app.
 
 ## Autonomy (who approves)
 
 | Category | Meaning | Default |
 |---|---|---|
-| content | texts and translations only | Claude ships on its own |
-| style | look and layout only | Claude ships on its own |
-| feature | new screens or behaviour, no database change | Claude opens a PR, Toni merges |
+| content | texts and translations only | Nero ships on its own |
+| style | look and layout only | Nero ships on its own |
+| feature | new screens or behaviour, no database change | Nero opens a PR, Toni merges |
 | data | database, security rules, sign-in, roles, payments, health data | always Toni, cannot be switched on |
 
 Toni raises Zrinko's autonomy over time with the switches at the bottom of **Ideas**. Only accounts in
 `app_owners` can change them; being admin is not enough, so Zrinko cannot raise his own autonomy.
 
-Claude does not trust the category the agent chose. It classifies the **actual diff**: any change under
+Nero does not trust the category the agent chose. It classifies the **actual diff**: any change under
 `supabase/`, to `js/config.js`, `service-worker.js`, sign-in or role code, payment links, CSP or
 third-party scripts is `data`, whatever the brief says.
 
-## Routine instructions (the scheduled Claude session follows these)
+## Routine instructions (the scheduled Nero session follows these)
 
 Each run, for project `oftgleobgcqdavnabfzr` and repo `manbeardog13/Sayan-Gym`:
 

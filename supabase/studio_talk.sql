@@ -13,7 +13,7 @@ begin
     new.archived_at := null; new.status := 'drafting';
     return new;
   end if;
-  -- An admin may only flip the archive flag. Everything else stays with the agent or Claude.
+  -- An admin may only flip the archive flag. Everything else stays with the agent or Nero.
   if public.is_admin()
      and new.author_id is not distinct from old.author_id
      and new.brief is not distinct from old.brief
@@ -30,7 +30,7 @@ begin
   if new.brief is distinct from old.brief or new.category is distinct from old.category
      or new.pr_url is distinct from old.pr_url or new.result_note is distinct from old.result_note
      or new.archived_at is distinct from old.archived_at or new.author_id is distinct from old.author_id then
-    raise exception 'only the idea agent or Claude can change these fields';
+    raise exception 'only the idea agent or Nero can change these fields';
   end if;
   if new.status = 'queued' and old.brief is null then
     raise exception 'finish the conversation first: the brief is not ready';
