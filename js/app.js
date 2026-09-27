@@ -1002,6 +1002,7 @@ async function viewDesk() {
       await new Promise((res, rej) => {
         const s = document.createElement("script");
         s.src = "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js";
+        s.integrity = "sha384-c9d8RFSL+u3exBOJ4Yp3HUJXS4znl9f+z66d1y54ig+ea249SpqR+w1wyvXz/lk+"; s.crossOrigin = "anonymous";
         s.onload = res; s.onerror = rej; document.head.appendChild(s);
       });
     }
