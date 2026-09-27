@@ -9,6 +9,8 @@ const $view = document.getElementById("view");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const nameOf = (row) => (row ? (LANG === "hr" ? row.name_hr : row.name_en) : "");
 // A member can hold a package the gym has since hidden; never let a missing name break the page.
+// Only plain https links from settings reach an href (no javascript:, data: or http:).
+const safeHttps = (u) => { try { const x = new URL(String(u || "").trim()); return x.protocol === "https:" ? x.href : null; } catch (e) { return null; } };
 const planName = (m) => nameOf(m?.membership_plans) || L("Članarina", "Membership");
 const MUSCLE = { legs: ["noge", "legs"], back: ["leđa", "back"], chest: ["prsa", "chest"], shoulders: ["ramena", "shoulders"],
   hamstrings: ["stražnja loža", "hamstrings"], glutes: ["gluteusi", "glutes"], arms: ["ruke", "arms"] };
@@ -312,7 +314,8 @@ function wireConcierge(quotes) {
 async function viewLanding() {
   const [quotes, settings, photos, plans] = await Promise.all([loadQuotes(), loadSettings(), listGallery(),
     sb.from("membership_plans").select("*").order("sort")]);
-  const buyHref = settings.payment_url || whatsappLink(L("Bok! Želim dnevnu kartu za danas.", "Hi! I'd like a day pass for today."));
+  const payUrl = safeHttps(settings.payment_url);
+  const buyHref = payUrl || whatsappLink(L("Bok! Želim dnevnu kartu za danas.", "Hi! I'd like a day pass for today."));
   const open = isOpenNow();
   // the stage already carries the headline; don't echo it in the assistant card
   const norm = (x) => x.toLowerCase().replace(/[^\p{L}]/gu, "");
@@ -347,7 +350,7 @@ async function viewLanding() {
       <span class="go" aria-hidden="true">${ICO.arrow}</span>
       <span class="tab-tl">${esc(L("dnevna karta", "day pass"))}</span>
       <div class="body"><div class="eyebrow"><span class="led"></span>18 € · ${esc(L("ručnik", "towel"))} 3 €</div>
-        <h2>${esc(settings.payment_url ? t("hero_cta") : "WhatsApp")}</h2><div class="desc">${esc(t("towel_note"))}</div></div>
+        <h2>${esc(payUrl ? t("hero_cta") : "WhatsApp")}</h2><div class="desc">${esc(t("towel_note"))}</div></div>
     </a>
 
     <a class="act green bottom reveal" href="${state.session ? "#/app" : "#/login"}" style="animation-delay:190ms">
@@ -1188,9 +1191,11 @@ async function viewAdmin() {
   };
 
   document.getElementById("save-pay").onclick = async () => {
-    const url = document.getElementById("pay").value.trim();
-    if (url && !/^https:\/\//i.test(url)) return toast("https://…");
-    const { error } = await sb.from("site_settings").upsert({ key: "payment_url", value: url || null, updated_at: new Date().toISOString() });
+    const raw = document.getElementById("pay").value.trim();
+    const url = raw ? safeHttps(raw) : null;
+    if (raw && (!url || url.length > 500 || /[\s"'<>]/.test(url)))
+      return toast(L("Unesi ispravnu poveznicu koja počinje s https://", "Enter a valid link starting with https://"), 4000);
+    const { error } = await sb.from("site_settings").upsert({ key: "payment_url", value: url, updated_at: new Date().toISOString() });
     error ? fail(error) : toast(t("saved_ok"));
   };
 
