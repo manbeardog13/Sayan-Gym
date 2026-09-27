@@ -2,18 +2,19 @@
 <html lang="hr" class="dark">
 <head>
   <meta charset="utf-8">
+  <!-- Content security policy. Styles allow 'unsafe-inline' because the views set style="" attributes; scripts do not. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://oftgleobgcqdavnabfzr.supabase.co https://*.googleusercontent.com; media-src 'self' blob:; connect-src 'self' https://oftgleobgcqdavnabfzr.supabase.co wss://oftgleobgcqdavnabfzr.supabase.co; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Saiyan Gym FITT — Dubrovnik</title>
   <meta name="description" content="Saiyan Gym FITT, Dubrovnik (Lapad). 700 m² strength gym: Hammer Strength, lifting platforms, belt squat. Day passes, training log and Power Level.">
   <meta name="theme-color" content="#0a0c11">
-  <script>/* dark by default; light only when chosen */try{if(localStorage.getItem('sg.theme')==='light'){document.documentElement.classList.remove('dark');document.querySelector('meta[name="theme-color"]').content='#e9ebee';}}catch(e){}</script>
+  <script src="js/boot-theme.js"></script>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg?v=3" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon.svg?v=3">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700;800&family=Sora:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700;800&family=Sora:wght@400;500;600;700;800&display=swap"></noscript>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700;800&family=Sora:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="css/asc.css">
   <link rel="stylesheet" href="css/saiyan.css">
 </head>
@@ -46,23 +47,14 @@
   <div id="auth-root"></div>
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js" integrity="sha384-8FWZA6BGMXhsfO+BLtrJK0We6gg5o1JyO8xQm6peWDEUs17ACA5ziE/NIAkl9z2k" crossorigin="anonymous"></script>
   <script defer src="js/config.js"></script>
   <script defer src="js/i18n.js"></script>
   <script defer src="js/studio.js"></script>
   <script defer src="js/coach.js"></script>
   <script defer src="js/member-ui.js"></script>
   <script defer src="js/app.js"></script>
-  <script>
-    // Zoom lock: iOS Safari ignores user-scalable=no, so block pinch and double-tap zoom here too.
-    ["gesturestart", "gesturechange", "gestureend"].forEach((ev) => document.addEventListener(ev, (e) => e.preventDefault(), { passive: false }));
-    document.addEventListener("touchmove", (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
-    let lastTouchEnd = 0;
-    document.addEventListener("touchend", (e) => { const now = Date.now(); if (now - lastTouchEnd < 300) e.preventDefault(); lastTouchEnd = now; }, { passive: false });
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(() => {}));
-    }
-  </script>
+  <script defer src="js/boot.js"></script>
 </body>
 </html>

@@ -124,3 +124,11 @@ deletes the account and, by cascade, profile, membership, visits, workouts, meas
 delete a member's account from Settings → Team and roles when the member asks at the desk. Admin accounts are never
 deleted this way. Ask the accountant whether membership records must be kept for bookkeeping before deleting a
 member who paid online.
+
+## 13. Content security policy and script hashes
+
+`index.html` and `privacy.html` carry a Content-Security-Policy `<meta>` tag (GitHub Pages can't send headers).
+Scripts may only come from this site and cdn.jsdelivr.net, never inline; the three CDN scripts (supabase-js,
+qrcode-generator, html5-qrcode) are pinned with `integrity` hashes. When you add an outside service (a new API,
+image host or script), add its domain to the policy. When you upgrade a CDN script version, replace its hash:
+`curl -s URL | openssl dgst -sha384 -binary | openssl base64 -A`. Styles still allow inline `style=""`.
