@@ -852,7 +852,11 @@ async function viewProfile() {
           <label for="c-health" style="font-weight:500">${esc(t("consent_health"))}</label>
         </div>
         <p class="small muted" style="margin-top:8px">${esc(t("consent_health_note"))}</p>
-        <button class="btn btn-ghost btn-sm" id="del" type="button">${esc(t("delete_data"))}</button>
+        <div class="del-actions">
+          <button class="btn btn-ghost btn-sm" id="del" type="button">${esc(t("delete_data"))}</button>
+          ${isAdmin() ? `<p class="small muted">${esc(L("Administratorski račun ne može se obrisati ovdje.", "An admin account can't be deleted here."))}</p>`
+            : `<button class="btn btn-ghost btn-sm danger" id="del-acc" type="button">${esc(L("Obriši moj račun", "Delete my account"))}</button>`}
+        </div>
       </section>
 
       ${canClaim ? `
@@ -890,13 +894,22 @@ async function viewProfile() {
   };
   document.getElementById("del").onclick = async () => {
     if (!confirm(t("delete_confirm"))) return;
-    const uid = state.session.user.id;
-    const a = await sb.from("workouts").delete().eq("user_id", uid);
-    if (a.error) return fail(a.error);
-    // allowed with or without an active consent, so withdrawn health data can always be erased
-    const b = await sb.from("body_metrics").delete().eq("user_id", uid);
-    if (b.error) return fail(b.error);
+    // one call: workouts and sets, measurements, PR bells and assistant messages
+    const { error } = await sb.rpc("delete_my_training_data");
+    if (error) return fail(error);
     toast(t("deleted")); viewProfile();
+  };
+  const delAcc = document.getElementById("del-acc");
+  if (delAcc) delAcc.onclick = async () => {
+    const word = L("OBRIŠI", "DELETE");
+    const typed = prompt(L(`Ovo trajno briše tvoj račun, članarinu, dolaske, treninge, mjere i privole. Aktivna karta prestaje vrijediti. Upiši ${word} za potvrdu.`,
+      `This permanently deletes your account, membership, visits, workouts, measurements and consents. An active pass stops working. Type ${word} to confirm.`));
+    if ((typed || "").trim().toUpperCase() !== word) return;
+    delAcc.disabled = true;
+    const { data, error } = await sb.functions.invoke("delete-account", { body: { confirm: "DELETE" } });
+    if (error || !data?.ok) { delAcc.disabled = false; return toast(L("Brisanje nije uspjelo — javi se na recepciju.", "Deletion failed — please ask at the front desk."), 5000); }
+    await signOut();
+    toast(L("Račun je obrisan.", "Your account has been deleted."), 5000);
   };
   const claim = document.getElementById("claim");
   if (claim) claim.onclick = async () => {
@@ -1222,8 +1235,16 @@ async function viewAdmin() {
     const { data, error } = await req; if (error) return fail(error);
     team.innerHTML = (data || []).map((u) => `<div class="row"><span>${esc(u.display_name || "—")}</span>
       <label class="sr-only" for="r-${u.id}">${esc(L("Uloga", "Role"))}</label>
-      <select id="r-${u.id}" data-role="${u.id}">${Object.entries(ROLE).map(([k, v]) => `<option value="${k}" ${u.role === k ? "selected" : ""}>${esc(v)}</option>`).join("")}</select></div>`).join("")
+      <span class="team-act"><select id="r-${u.id}" data-role="${u.id}">${Object.entries(ROLE).map(([k, v]) => `<option value="${k}" ${u.role === k ? "selected" : ""}>${esc(v)}</option>`).join("")}</select>
+      ${u.role === "admin" ? "" : `<button class="icon-btn" type="button" data-erase="${u.id}" data-name="${esc(u.display_name || "")}" aria-label="${esc(L("Obriši račun", "Delete account"))}" title="${esc(L("Obriši račun (na zahtjev člana)", "Delete account (on the member's request)"))}">✕</button>`}</span></div>`).join("")
       || `<p class="muted small">${esc(L("Nema rezultata.", "No results."))}</p>`;
+    team.querySelectorAll("[data-erase]").forEach((b) => (b.onclick = async () => {
+      if (!confirm(L(`Trajno obrisati račun „${b.dataset.name}” i sve podatke? Samo na zahtjev člana.`, `Permanently delete "${b.dataset.name}" and all their data? Only on the member's request.`))) return;
+      b.disabled = true;
+      const { data, error } = await sb.functions.invoke("delete-account", { body: { confirm: "DELETE", user_id: b.dataset.erase } });
+      if (error || !data?.ok) { b.disabled = false; return toast(L("Brisanje nije uspjelo.", "Deletion failed."), 4000); }
+      toast(L("Račun obrisan.", "Account deleted.")); showTeam(q);
+    }));
     team.querySelectorAll("[data-role]").forEach((sel) => (sel.onchange = async () => {
       if (sel.value === "admin" && !confirm(L("Dati ovoj osobi puna administratorska prava?", "Give this person full admin rights?"))) return showTeam(q);
       const { error } = await sb.from("profiles").update({ role: sel.value }).eq("id", sel.dataset.role);
