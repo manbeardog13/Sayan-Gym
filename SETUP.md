@@ -108,3 +108,10 @@ bell in the privacy notice. See RESEARCH.md for the reasoning.
 delete their own measurements; coaches can check people in and out but only admins manage memberships,
 exercises, visits and other people's profiles. It also fixes the profile update policy (it failed with
 "infinite recursion") and the role guard's admin check.
+
+## 11. "Ask the gym" limits
+
+`supabase/concierge_hardening.sql` (applied) and the `concierge` function (v7): only the gym's site may call it
+from a browser (`APP_ORIGINS` secret overrides the list, comma-separated), questions are capped at 500
+characters, each visitor gets 20 questions a minute and the whole site 600 an hour (keyed by a one-day hash of
+the caller's address, never the address itself), and errors return a generic message.
