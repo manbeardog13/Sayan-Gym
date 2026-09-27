@@ -100,3 +100,11 @@ Run `supabase/wave1.sql` once. It replaces `my_power_level` (new XP formula: ses
 count more than raw volume, plus comeback bonus and rest tokens), so existing members' levels will shift.
 Adds `my_onboarding`, `greet_today`, `staff_touches` and `pr_bells`. Mention the staff greet list and the PR
 bell in the privacy notice. See RESEARCH.md for the reasoning.
+
+## 10. GDPR and staff permissions
+
+`supabase/gdpr_staff_rls.sql` (applied): consents are append-only for members and withdrawn with
+`withdraw_consent()`; withdrawing the health consent deletes body measurements; members can always
+delete their own measurements; coaches can check people in and out but only admins manage memberships,
+exercises, visits and other people's profiles. It also fixes the profile update policy (it failed with
+"infinite recursion") and the role guard's admin check.
