@@ -882,7 +882,7 @@ async function viewProfile() {
   document.getElementById("c-health").onchange = async (e) => {
     const r = e.target.checked
       ? await sb.from("consents").insert({ purpose: "health", text_version: cfg.consentVersion })
-      : await sb.from("consents").update({ withdrawn_at: new Date().toISOString() }).eq("purpose", "health").is("withdrawn_at", null);
+      : await sb.rpc("withdraw_consent", { p_purpose: "health" }); // also erases body measurements
     if (r.error) return fail(r.error);
     viewProfile();
   };
@@ -891,7 +891,9 @@ async function viewProfile() {
     const uid = state.session.user.id;
     const a = await sb.from("workouts").delete().eq("user_id", uid);
     if (a.error) return fail(a.error);
-    if (hasHealth) await sb.from("body_metrics").delete().eq("user_id", uid);
+    // allowed with or without an active consent, so withdrawn health data can always be erased
+    const b = await sb.from("body_metrics").delete().eq("user_id", uid);
+    if (b.error) return fail(b.error);
     toast(t("deleted")); viewProfile();
   };
   const claim = document.getElementById("claim");
