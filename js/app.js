@@ -7,7 +7,9 @@ const sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, {
 const state = { session: null, profile: null, exercises: null, quotes: null };
 const $view = document.getElementById("view");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const nameOf = (row) => (LANG === "hr" ? row.name_hr : row.name_en);
+const nameOf = (row) => (row ? (LANG === "hr" ? row.name_hr : row.name_en) : "");
+// A member can hold a package the gym has since hidden; never let a missing name break the page.
+const planName = (m) => nameOf(m?.membership_plans) || L("Članarina", "Membership");
 const MUSCLE = { legs: ["noge", "legs"], back: ["leđa", "back"], chest: ["prsa", "chest"], shoulders: ["ramena", "shoulders"],
   hamstrings: ["stražnja loža", "hamstrings"], glutes: ["gluteusi", "glutes"], arms: ["ruke", "arms"] };
 const muscle = (g) => (MUSCLE[g] ? MUSCLE[g][LANG === "hr" ? 0 : 1] : g);
@@ -568,7 +570,7 @@ async function viewDashboard() {
       <span class="go" aria-hidden="true">${ICO.scan}</span>
       <span class="tab-tl">${esc(t("pass_title"))}</span>
       <div class="body"><h2>${esc(membership ? L("Pokaži QR na ulazu", "Show QR at the door") : t("pass_title"))}</h2>
-        <div class="desc">${esc(membership ? nameOf(membership.membership_plans) + " · " + (membership.ends_at ? t("pass_valid", fmtDate(membership.ends_at)) : t("pass_open")) : t("pass_none"))}</div></div>
+        <div class="desc">${esc(membership ? planName(membership) + " · " + (membership.ends_at ? t("pass_valid", fmtDate(membership.ends_at)) : t("pass_open")) : t("pass_none"))}</div></div>
     </a>
 
     <section class="card dark slot-a reveal" style="animation-delay:230ms">
@@ -627,7 +629,7 @@ async function viewDashboard() {
       <button class="x" type="button" id="pass-x" aria-label="${L("Zatvori", "Close")}">✕</button>
       <span class="k">${esc(t("pass_title"))}</span>
       ${membership ? `<div class="qr" id="qr"></div><code>${esc(membership.pass_code.toUpperCase())}</code>
-        <p class="cap" style="margin-top:8px">${esc(nameOf(membership.membership_plans))} · ${membership.ends_at ? esc(t("pass_valid", fmtDate(membership.ends_at))) : esc(t("pass_open"))}</p>`
+        <p class="cap" style="margin-top:8px">${esc(planName(membership))} · ${membership.ends_at ? esc(t("pass_valid", fmtDate(membership.ends_at))) : esc(t("pass_open"))}</p>`
       : `<p class="cap" style="margin:16px 0 18px">${esc(t("pass_none"))}</p>
          <a class="btn btn-primary" href="${whatsappLink(L("Bok! Želim kupiti kartu.", "Hi! I'd like to buy a pass."))}" target="_blank" rel="noopener">WhatsApp</a>`}
     </div>
