@@ -9,7 +9,7 @@ node --test tests/member-ui.test.cjs
 The 21 deterministic tests cover published plan and member-post selection, escaping,
 guest/member/coach/admin navigation, continuous wrapping, bidirectional dragging,
 nonlinear coasting and immediate loop resume at rest, vertical gesture click
-suppression, cancellation, pause, reduced motion (including during coasting),
+suppression, cancellation, keyboard-focus hold (the strip has no pause button), reduced motion (including during coasting),
 cleanup, popstate-only back transitions, the same-video splash handoff and still
 restoration, and video range-request cache handling.
 
