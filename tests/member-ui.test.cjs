@@ -71,8 +71,7 @@ function motionHarness(reduced = false) {
   const media={matches:reduced,addEventListener(){},removeEventListener(){}};
   const original={getBoundingClientRect:()=>({width:900}),cloneNode:()=>({dataset:{},setAttribute(){},querySelectorAll:()=>[]})};
   const track={style:{},querySelector:()=>original,querySelectorAll:()=>[],appendChild(){}};
-  const pause={setAttribute(){}};
-  const viewport={clientWidth:390,querySelector:()=>track,closest:()=>({querySelector:()=>pause}),addEventListener:(n,f)=>events[n]=f,
+  const viewport={clientWidth:390,querySelector:()=>track,addEventListener:(n,f)=>events[n]=f,
     setPointerCapture:()=>{capture=true;},hasPointerCapture:()=>capture,releasePointerCapture:()=>{capture=false;},contains:()=>false};
   const ctx=context({document:{querySelector:()=>viewport,hidden:false,createElement:()=>({showModal(){opened++;},addEventListener(){}}),body:{appendChild(){}}},whatsappLink:()=>'',matchMedia:()=>media,
     performance:{now:()=>now},requestAnimationFrame:f=>{callbacks.set(++id,f);return id;},cancelAnimationFrame:i=>callbacks.delete(i),
@@ -81,7 +80,7 @@ function motionHarness(reduced = false) {
   const frame = () => { now+=16; const list=[...callbacks.values()]; callbacks.clear(); list.forEach(f=>f(now)); };
   const x = () => -Number(track.style.transform.match(/translate3d\(([-.\d]+)/)[1]) || 0;
   const fire = (name,props={}) => events[name]({button:0,pointerId:1,clientX:200,clientY:100,...props});
-  return {ctx,frame,x,fire,media,pause,callbacks,get opened(){return opened;},get disconnected(){return disconnected;}};
+  return {ctx,frame,x,fire,media,callbacks,get opened(){return opened;},get disconnected(){return disconnected;}};
 }
 test('automatic strip moves right to left and wraps without hitting an edge', () => {
   const h=motionHarness(); h.frame(); const before=h.x(); h.frame(); assert.ok(h.x()>before);
@@ -111,15 +110,21 @@ test('vertical gestures keep native page scrolling; cancellation resumes the loo
   const after=h.x();h.frame();assert.ok(h.x()>after);
 });
 test('reduced motion disables autoplay but preserves manual swipe and arrow navigation', () => {
-  const h=motionHarness(true);h.frame();h.frame();assert.equal(h.x(),0);assert.equal(h.pause.hidden,true);
+  const h=motionHarness(true);h.frame();h.frame();assert.equal(h.x(),0);
   h.fire('pointerdown');h.fire('pointermove',{clientX:150});h.frame();assert.equal(h.x(),50);
   h.fire('pointerup');h.frame();assert.equal(h.x(),50);
   h.fire('keydown',{key:'ArrowRight',preventDefault(){}});assert.equal(h.x(),290);
 });
-test('pause remains paused after a swipe and cleanup cancels the animation', () => {
-  const h=motionHarness();h.frame();h.pause.onclick();const before=h.x();h.frame();assert.equal(h.x(),before);
-  h.fire('pointerdown');h.fire('pointermove',{clientX:150});h.frame();h.fire('pointerup');
-  const after=h.x();h.frame();assert.equal(h.x(),after);
+// The strip has no pause button (removed on purpose); keyboard focus is what holds it still.
+test('keyboard focus holds the strip, leaving focus resumes it, and cleanup cancels the animation', () => {
+  assert.ok(!context().stream([{kind:'photo',label:'Plates',src:'assets/hero.webp'}]).includes('stream-pause'));
+  const h=motionHarness();h.frame();
+  h.fire('focusin',{target:{matches:()=>false,closest:()=>null}});   // mouse focus: keeps moving
+  let before=h.x();h.frame();assert.ok(h.x()>before);
+  h.fire('focusin',{target:{matches:()=>true,closest:()=>null}});    // keyboard focus: holds still
+  before=h.x();h.frame();h.frame();assert.equal(h.x(),before);
+  h.fire('focusout',{relatedTarget:null});
+  before=h.x();h.frame();assert.ok(h.x()>before);
   h.ctx.wireStream.cleanup();assert.equal(h.callbacks.size,0);assert.equal(h.disconnected,true);
 });
 
