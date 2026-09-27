@@ -115,3 +115,12 @@ exercises, visits and other people's profiles. It also fixes the profile update 
 from a browser (`APP_ORIGINS` secret overrides the list, comma-separated), questions are capped at 500
 characters, each visitor gets 20 questions a minute and the whole site 600 an hour (keyed by a one-day hash of
 the caller's address, never the address itself), and errors return a generic message.
+
+## 12. Deleting data and accounts
+
+`supabase/delete_my_data.sql` (applied) and the `delete-account` function: Profile → "Delete all my training data"
+removes workouts, measurements, PR bells and assistant messages; "Delete my account" (member types DELETE/OBRIŠI)
+deletes the account and, by cascade, profile, membership, visits, workouts, measurements and consents. Admins can
+delete a member's account from Settings → Team and roles when the member asks at the desk. Admin accounts are never
+deleted this way. Ask the accountant whether membership records must be kept for bookkeeping before deleting a
+member who paid online.
