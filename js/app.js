@@ -23,13 +23,20 @@ function toast(msg, ms = 2600) {
   el.textContent = msg; el.hidden = false;
   clearTimeout(toast._t); toast._t = setTimeout(() => (el.hidden = true), ms);
 }
-function fail(e) { console.error(e); toast(t("error") + (e?.message || e), 4000); }
+function fail(e) {
+  console.error(e);
+  if (!navigator.onLine || /failed to fetch|networkerror|load failed/i.test(String(e?.message || e)))
+    return toast(L("Nema interneta. Treninzi se spremaju na mobitel i šalju kasnije.", "No connection. Workouts are kept on your phone and sent later."), 4000);
+  toast(t("error") + (e?.message || e), 4000);
+}
 
 /* ---------- data helpers ---------- */
 async function loadExercises() {
   if (state.exercises) return state.exercises;
   const { data, error } = await sb.from("exercises").select("*").order("muscle_group");
-  if (error) throw error;
+  // Offline in the gym: the last list this phone saw is good enough to log sets.
+  if (error) { const cached = lsGet("sg.exercises", null); if (cached) return (state.exercises = cached); throw error; }
+  lsSet("sg.exercises", data);
   return (state.exercises = data);
 }
 async function loadQuotes() {
@@ -151,6 +158,8 @@ const ICO = {
   scan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.2V6.4A2.4 2.4 0 016.4 4h1.8M15.8 4h1.8A2.4 2.4 0 0120 6.4v1.8M20 15.8v1.8a2.4 2.4 0 01-2.4 2.4h-1.8M8.2 20H6.4A2.4 2.4 0 014 17.6v-1.8"/><path d="M7.2 12h9.6"/></svg>',
   gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 00-2-1.2L14 3h-4l-.5 2.6a7 7 0 00-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 005 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 002 1.2L10 21h4l.5-2.6a7 7 0 002-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z"/></svg>',
   globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 3.7 5.4 3.7 8.5s-1.2 5.9-3.7 8.5c-2.5-2.6-3.7-5.4-3.7-8.5s1.2-5.9 3.7-8.5z"/></svg>',
+  crew: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9.5" r="2.4"/><path d="M3.5 19a5.5 5.5 0 0111 0M14.5 15.2a4.5 4.5 0 016 3.8"/></svg>',
+  tv: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></svg>',
   out: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H6a2 2 0 00-2 2v12a2 2 0 002 2h3M15 8l4 4-4 4M19 12H9"/></svg>',
   arrow: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
   send: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M12 6l6 6-6 6"/></svg>',
@@ -186,7 +195,7 @@ function renderSide(route) {
   document.querySelector(".sb-burger")?.remove();
   root.classList.remove("has-member-nav", "has-side", "side-open");
   renderDock.cleanup?.();
-  if (!state.session || route === "#/login") return;
+  if (!state.session || route === "#/login" || route === "#/tv") return;
   const item = (m, href, icon, label) =>
     `<a class="sb-item${route === href ? " on" : ""}" data-m="${m}" href="${href}" title="${esc(label)}">${icon}<span class="t">${esc(label)}</span></a>`;
   const p = state.profile || {};
@@ -202,9 +211,11 @@ function renderSide(route) {
       ${item("dashboard", "#/app", ICO.home, t("nav_app"))}
       ${item("checkin", "#/log", ICO.plus, t("nav_log"))}
       ${item("customers", "#/progress", ICO.chart, t("nav_progress"))}
+      ${item("crew", "#/crew", ICO.crew, L("Ekipa", "Crew"))}
       ${item("reminders", "#/profile", ICO.user, t("nav_profile"))}
       ${isStaff() ? `<div class="sb-div"></div><div class="sb-eyebrow2">${L("Upravljanje", "Manage")}</div>
         ${item("scan", "#/desk", ICO.scan, t("nav_coach"))}
+        ${item("tv", "#/tv", ICO.tv, L("Ekran za TV", "Gym TV"))}
         ${isAdmin() ? item("users", "#/admin", ICO.gear, t("nav_admin")) + item("assistant", "#/studio", ICO.bulb, "Studio") : ""}` : ""}
       <div class="sb-div"></div>
       ${item("assistant", "#/site", ICO.globe, L("Web stranica", "Public site"))}
@@ -312,8 +323,8 @@ function wireConcierge(quotes) {
    LANDING — ASC dashboard composition, public face of the gym
    ========================================================= */
 async function viewLanding() {
-  const [quotes, settings, photos, plans] = await Promise.all([loadQuotes(), loadSettings(), listGallery(),
-    sb.from("membership_plans").select("*").order("sort")]);
+  const [quotes, settings, photos, plans, best] = await Promise.all([loadQuotes(), loadSettings(), listGallery(),
+    sb.from("membership_plans").select("*").order("sort"), loadBestTimes()]);
   const payUrl = safeHttps(settings.payment_url);
   const buyHref = payUrl || whatsappLink(L("Bok! Želim dnevnu kartu za danas.", "Hi! I'd like a day pass for today."));
   const open = isOpenNow();
@@ -390,6 +401,7 @@ async function viewLanding() {
       <div class="row"><span>${esc(L("Ponedjeljak – subota", "Monday – Saturday"))}</span><b>06–22</b></div>
       <div class="row"><span>${esc(L("Nedjelja", "Sunday"))}</span><b>06–20</b></div>
       <div class="row"><span>MultiSport</span><b>${esc(L("vrijedi", "accepted"))}</b></div>
+      ${best.length ? `<h4 class="sub-h">${esc(L("Danas je najmirnije", "Quietest today"))}</h4>${bestTimesHtml(best, zagrebDow(), { compact: true })}` : ""}
       <p class="quote-line" style="margin-top:12px">„${esc(dailyQuote(quotes))}”</p>
     </div>
 
@@ -520,13 +532,14 @@ function buildTodayPlan(exercises, recovery, targets, profile) {
 async function viewDashboard() {
   $view.innerHTML = `<div class="loading">…</div>`;
   const uid = state.session.user.id;
-  const [pl, tg, rc, ms, ex, quotes, hist, news, onboard, bells, strip] = await Promise.all([
+  const [pl, tg, rc, ms, ex, quotes, hist, news, onboard, bells, strip, crew] = await Promise.all([
     sb.rpc("my_power_level"), sb.rpc("my_next_targets"), sb.rpc("my_recovery"),
     sb.from("memberships").select("*, membership_plans(name_hr,name_en)").eq("user_id", uid).eq("status", "active")
       .order("ends_at", { ascending: false, nullsFirst: true }).limit(1),
     loadExercises(), loadQuotes(),
     sb.from("workouts").select("id, performed_on, workout_sets(count)").eq("user_id", state.session.user.id).order("performed_on", { ascending: false }).limit(4),
     newsFeedHtml().catch(() => ""), onboardingHtml().catch(() => ""), bellsHtml().catch(() => ""), loadStreamItems(),
+    crewTeaserHtml().catch(() => ""),
   ]);
   for (const r of [pl, tg, rc, ms]) if (r.error) return fail(r.error);
   const p = pl.data[0];
@@ -541,7 +554,7 @@ async function viewDashboard() {
   const plan = buildTodayPlan(ex, recovery, targets, pr);
   const goalTxt = pr.goal ? t("goal_" + pr.goal) : "—", expTxt = pr.experience ? t("exp_" + pr.experience) : "—";
 
-  $view.innerHTML = `${installCoachHtml()}${onboard}
+  $view.innerHTML = `${installCoachHtml()}${outboxNoteHtml()}${onboard}
   <section class="hero">
     <div class="stage reveal" style="animation-delay:110ms">
       <span class="photo" aria-hidden="true"></span><span class="scrim" aria-hidden="true"></span>
@@ -622,6 +635,7 @@ async function viewDashboard() {
         || `<p class="plan-meta">${esc(t("history_empty"))}</p>`}
     </div>
   </section>
+  ${crew}
   ${bells}
   ${news}
   ${stream(strip)}
@@ -638,7 +652,7 @@ async function viewDashboard() {
     </div>
   </dialog>`;
 
-  animateIn($view); wireInstallCoach(); wireStream();
+  animateIn($view); wireInstallCoach(); wireStream(); wireKudos($view);
   const dlg = document.getElementById("pass-dlg");
   document.getElementById("pass-open").onclick = (e) => { e.preventDefault(); dlg.showModal(); };
   document.getElementById("pass-x").onclick = () => dlg.close();
@@ -659,10 +673,12 @@ async function viewLog() {
     sb.from("workouts").select("id, performed_on, workout_sets(count)").eq("user_id", state.session.user.id).order("performed_on", { ascending: false }).limit(10),
     sb.rpc("my_recovery"),
   ]);
-  if (tg.error) return fail(tg.error);
+  if (tg.error && !isNetErr(tg.error)) return fail(tg.error);   // offline: log without suggestions
   const targets = Object.fromEntries((tg.data || []).map((x) => [x.exercise_id, x]));
   const plan = buildTodayPlan(ex, rc.data || [], tg.data || [], state.profile);
-  const blocks = plan.list.map(({ e, target }) => ({
+  // Unsaved sets from earlier (a reload, a dead battery, no signal) come back first.
+  const draft = Draft.read();
+  const blocks = draft ? draft.blocks.filter((b) => ex.some((e) => e.id === b.exercise_id)) : plan.list.map(({ e, target }) => ({
     exercise_id: e.id,
     sets: [{ load: target ? target.suggest_load : "", reps: target ? target.suggest_reps : "", rpe: "" }],
   }));
@@ -673,11 +689,14 @@ async function viewLog() {
     <div class="grid">
       <section class="card span-8">
         <div class="form-grid">
-          <div><label for="d">${LANG === "hr" ? "Datum" : "Date"}</label><input id="d" type="date" value="${todayZagreb()}"></div>
+          <div><label for="d">${LANG === "hr" ? "Datum" : "Date"}</label><input id="d" type="date" value="${esc(draft?.day || todayZagreb())}"></div>
           <div><label for="ex-pick">${esc(t("exercise"))}</label>
             <select id="ex-pick"><option value="">${esc(t("pick_ex"))}</option>
               ${ex.map((e) => `<option value="${e.id}">${esc(nameOf(e))}</option>`).join("")}</select></div>
         </div>
+        ${draft ? `<p class="small draft-note" role="status">${esc(L("Vraćene su tvoje nespremljene serije.", "Your unsaved sets are back."))}
+          <button class="btn btn-ghost btn-sm" id="fresh" type="button">${esc(L("Počni ispočetka", "Start fresh"))}</button></p>` : ""}
+        ${outboxNoteHtml()}
         <div id="blocks" style="margin-top:18px"></div>
         ${workoutBarHtml()}
         <button class="btn btn-primary" id="save" type="button" style="width:100%;margin-top:8px">${esc(t("save_workout"))}</button>
@@ -690,6 +709,7 @@ async function viewLog() {
     </div>
   </div>`;
 
+  let touched = !!draft;
   const draw = () => {
     document.getElementById("blocks").innerHTML = blocks.map((b, bi) => {
       const e = ex.find((x) => x.id === b.exercise_id);
@@ -715,21 +735,31 @@ async function viewLog() {
     }).join("");
     const wm = document.getElementById("wm");
     if (wm) wm.classList.toggle("is-idle", !blocks.some((b) => b.sets.some((s) => s.done)));
+    keep();
   };
+  // Only what the member actually entered becomes a draft, not the suggested plan.
+  const keep = () => { if (touched) Draft.save(document.getElementById("d").value, blocks); };
+  document.getElementById("d").onchange = () => { touched = true; keep(); };
+  const fresh = document.getElementById("fresh");
+  if (fresh) fresh.onclick = () => { Draft.clear(); viewLog(); };
 
   document.getElementById("ex-pick").onchange = (e) => {
     const id = e.target.value; if (!id) return;
+    touched = true;
     const tg = targets[id];
     blocks.push({ exercise_id: id, sets: [{ load: tg ? tg.suggest_load : "", reps: tg ? tg.suggest_reps : "", rpe: "" }] });
     e.target.value = ""; draw();
   };
   document.getElementById("blocks").addEventListener("input", (e) => {
     const { b, s, f } = e.target.dataset; if (b == null) return;
+    touched = true;
     blocks[b].sets[s][f] = e.target.value.replace(",", ".");
+    keep();
   });
   wireWorkoutBar();
   document.getElementById("blocks").addEventListener("click", (e) => {
     const d = e.target.closest("button")?.dataset || {};
+    if (d.plates == null) touched = true;
     if (d.done != null) {
       const [b, si] = d.done.split(":"), set = blocks[b].sets[si];
       set.done = !set.done; draw();
@@ -746,16 +776,27 @@ async function viewLog() {
     const rows = [];
     blocks.forEach((b) => b.sets.forEach((s, i) => {
       const load = parseFloat(s.load), reps = parseInt(s.reps, 10), rpe = s.rpe === "" ? null : parseFloat(s.rpe);
-      if (!isNaN(load) && reps > 0) rows.push({ exercise_id: b.exercise_id, set_no: i + 1, load_kg: load, reps, rpe: rpe && rpe >= 5 && rpe <= 10 ? rpe : null });
+      // same limits as the database, so a saved set can never be rejected later
+      if (!isNaN(load) && load >= 0 && load <= 600 && reps > 0 && reps <= 100)
+        rows.push({ exercise_id: b.exercise_id, set_no: i + 1, load_kg: load, reps, rpe: rpe && rpe >= 5 && rpe <= 10 ? rpe : null });
     }));
     if (!rows.length) return toast(t("no_sets"));
     ev.target.disabled = true;
     const day = document.getElementById("d").value || todayZagreb();
-    const { data: w, error } = await sb.from("workouts").insert({ performed_on: day }).select().single();
-    if (error) { ev.target.disabled = false; return fail(error); }
-    const { error: e2 } = await sb.from("workout_sets").insert(rows.map((r) => ({ ...r, workout_id: w.id })));
-    if (e2) { await sb.from("workouts").delete().eq("id", w.id); ev.target.disabled = false; return fail(e2); }
+    // The phone picks the ids and keeps the workout until the server has it, so a retry
+    // after lost Wi-Fi can't duplicate it and a failed send can't lose it.
+    const id = crypto.randomUUID();
+    const entry = { workout: { id, performed_on: day }, sets: rows.map((r) => ({ ...r, id: crypto.randomUUID(), workout_id: id })) };
+    if (Outbox.add(entry)) await Outbox.flush();
+    else { const error = await Outbox.send(entry); if (error) { ev.target.disabled = false; return fail(error); } }   // no storage (private mode)
+    Draft.clear();
     leaveWorkout();
+    if (Outbox.has(id)) {
+      // stay here: the logger works offline, the dashboard needs the server
+      await route();
+      toast(L("Spremljeno na mobitelu — poslat će se čim se vrati internet.", "Saved on your phone — it will sync as soon as you're back online."), 5000);
+      return;
+    }
     const prs = await findPRs(rows, day, ex).catch(() => []);
     if (prs.length) return celebratePRs(prs);
     toast(t("saved")); location.hash = "#/app";
@@ -829,7 +870,8 @@ async function viewProfile() {
   const { data: metrics } = hasHealth
     ? await sb.from("body_metrics").select("*").order("measured_on", { ascending: false }).limit(8)
     : { data: [] };
-  const canClaim = !isAdmin() && (await sb.rpc("admin_exists")).data === false;
+  const [claimable, push] = await Promise.all([sb.rpc("admin_exists"), pushCardHtml().catch(() => "")]);
+  const canClaim = !isAdmin() && claimable.data === false;
   const opt = (name, vals, cur) => vals.map((v) => `<option value="${v}" ${cur === v ? "selected" : ""}>${esc(t(name + "_" + v))}</option>`).join("");
 
   $view.innerHTML = `
@@ -855,6 +897,10 @@ async function viewProfile() {
           <label for="c-health" style="font-weight:500">${esc(t("consent_health"))}</label>
         </div>
         <p class="small muted" style="margin-top:8px">${esc(t("consent_health_note"))}</p>
+        <div class="toggle-row" style="margin-top:14px">
+          <input type="checkbox" id="c-boards" ${p.show_on_boards ? "checked" : ""}>
+          <label for="c-boards" style="font-weight:500">${esc(L("Pokaži moje ime na pločama i ekranu u teretani (klub, sezona)", "Show my first name on the boards and the gym screen (club, season)"))}</label>
+        </div>
         <div class="del-actions">
           <button class="btn btn-ghost btn-sm" id="del" type="button">${esc(t("delete_data"))}</button>
           ${isAdmin() ? `<p class="small muted">${esc(L("Administratorski račun ne može se obrisati ovdje.", "An admin account can't be deleted here."))}</p>`
@@ -862,6 +908,7 @@ async function viewProfile() {
         </div>
       </section>
 
+      ${push}
       ${canClaim ? `
       <section class="card span-12">
         <h2>${esc(t("claim_title"))}</h2>
@@ -882,6 +929,8 @@ async function viewProfile() {
   </div>`;
 
   document.getElementById("so").onclick = signOut;
+  document.getElementById("c-boards").onchange = (e) => setBoards(e.target);
+  wirePush();
   document.getElementById("save-p").onclick = async () => {
     const upd = { display_name: document.getElementById("nm").value.trim() || null, goal: document.getElementById("goal").value || null, experience: document.getElementById("exp").value || null };
     const { error } = await sb.from("profiles").update(upd).eq("id", state.session.user.id);
@@ -935,10 +984,10 @@ async function viewProfile() {
    ========================================================= */
 async function viewDesk() {
   if (!isStaff()) { $view.innerHTML = `<div class="page"><p>${esc(t("staff_only"))}</p></div>`; return; }
-  const [inside, radar, greet] = await Promise.all([
+  const [inside, radar, greet, club] = await Promise.all([
     sb.from("check_ins").select("id, user_id, checked_in_at").is("checked_out_at", null)
       .gt("checked_in_at", new Date(Date.now() - 3 * 3600e3).toISOString()).order("checked_in_at", { ascending: false }),
-    sb.rpc("churn_radar"), greetHtml().catch(() => ""),
+    sb.rpc("churn_radar"), greetHtml().catch(() => ""), clubDeskHtml().catch(() => ""),
   ]);
   if (inside.error) return fail(inside.error);
   const ids = [...new Set((inside.data || []).map((c) => c.user_id))];
@@ -947,7 +996,8 @@ async function viewDesk() {
 
   $view.innerHTML = `
   <div class="page">
-    <div class="phead"><h1>${esc(t("desk_title"))}</h1></div>
+    <div class="phead"><h1>${esc(t("desk_title"))}</h1>
+      <a class="btn btn-ghost btn-sm" href="#/tv">${esc(L("Ekran za TV", "Gym TV screen"))}</a></div>
     <div class="grid">
       ${greet}
       <section class="card span-6">
@@ -976,10 +1026,12 @@ async function viewDesk() {
             <span class="score">${r.risk_score}</span>
           </div>`).join("")}
       </section>
+      ${club}
     </div>
   </div>`;
 
   wireGreet(viewDesk);
+  wireClubDesk(viewDesk);
   const checkIn = async (raw) => {
     const code = String(raw).replace(/^SAIYAN:/i, "").trim().toLowerCase();
     if (!code) return;
@@ -1018,12 +1070,13 @@ async function viewDesk() {
    ========================================================= */
 async function viewAdmin() {
   if (!isAdmin()) { $view.innerHTML = `<div class="page"><p>${esc(t("staff_only"))}</p></div>`; return; }
-  const [plans, facts, quotes, settings, photos, wireRes] = await Promise.all([
+  const [plans, facts, quotes, settings, photos, wireRes, crewAdmin] = await Promise.all([
     sb.from("membership_plans").select("*").order("sort"),
     sb.from("gym_facts").select("id, topic, questions, content_hr, content_en").order("topic"),
     sb.from("motivation").select("*").order("id"),
     loadSettings(), listGallery(),
     sb.functions.invoke("gym-wire", { body: { action: "status" } }),
+    crewAdminHtml().catch(() => ""),
   ]);
   const wire = wireRes?.data && !wireRes.data.error ? wireRes.data : null;
   for (const r of [plans, facts, quotes]) if (r.error) return fail(r.error);
@@ -1116,6 +1169,8 @@ async function viewAdmin() {
           </div>`).join("")}
         <button class="btn btn-ghost" id="add-fact" type="button">+ ${esc(t("a_add_fact"))}</button>
       </section>
+
+      ${crewAdmin}
 
       <section class="card span-12" aria-labelledby="ateam" data-tab="${esc(L("tim", "team"))}">
         <h2 id="ateam">${esc(L("Tim i uloge", "Team and roles"))}</h2>
@@ -1257,6 +1312,7 @@ async function viewAdmin() {
       error ? (fail(error), showTeam(q)) : toast(t("saved_ok"));
     }));
   };
+  if (crewAdmin) wireCrewAdmin(viewAdmin);
   let teamT; document.getElementById("team-q").oninput = (e) => { clearTimeout(teamT); teamT = setTimeout(() => showTeam(e.target.value.trim()), 250); };
   showTeam("");
 
@@ -1420,7 +1476,7 @@ function decorate() {
     [t("churn_title"), "radar"], [t("a_prices"), L("cijene", "prices")], [t("a_payment"), L("plaćanje", "payment")],
     [t("a_gallery"), L("galerija", "gallery")], [t("a_facts"), L("asistent", "assistant")], [t("a_motivation"), L("motivacija", "motivation")],
   ];
-  const fallback = { "#/log": L("unos", "entry"), "#/progress": "e1RM", "#/profile": L("profil", "profile"), "#/desk": L("recepcija", "desk"), "#/admin": L("postavke", "settings"), "#/studio": "studio", "#/ideas": "studio" };
+  const fallback = { "#/log": L("unos", "entry"), "#/progress": "e1RM", "#/profile": L("profil", "profile"), "#/desk": L("recepcija", "desk"), "#/admin": L("postavke", "settings"), "#/studio": "studio", "#/ideas": "studio", "#/crew": L("ekipa", "crew") };
   const h = location.hash.split("?")[0];
   let n = 0;
   $view.querySelectorAll(".page label:not([for])").forEach((lab) => {
@@ -1456,8 +1512,9 @@ async function signOut() {
 const ROUTES = {
   "#/site": viewLanding, "#/login": viewLogin,
   "#/app": viewDashboard, "#/log": viewLog, "#/progress": viewProgress, "#/profile": viewProfile, "#/desk": viewDesk, "#/admin": viewAdmin, "#/studio": viewStudio, "#/ideas": viewStudio,
+  "#/crew": viewCrew, "#/tv": viewTv,
 };
-const PROTECTED = new Set(["#/app", "#/log", "#/progress", "#/profile", "#/desk", "#/admin", "#/studio", "#/ideas"]);
+const PROTECTED = new Set(["#/app", "#/log", "#/progress", "#/profile", "#/desk", "#/admin", "#/studio", "#/ideas", "#/crew", "#/tv"]);
 
 const navigationMotion = createNavigationMotion(history);
 window.addEventListener("popstate", navigationMotion.onPop);
@@ -1475,11 +1532,12 @@ async function route() {
   if (h !== "#/log") leaveWorkout();
   wireStream.cleanup?.();
   renderDock.cleanup?.();
+  viewTv.cleanup?.(); viewTv.cleanup = null;
   document.querySelectorAll("dialog.photo-dlg,dialog.pr-dlg,dialog.plates-dlg").forEach((d) => d.remove());
   renderNav(h);
   try { await ROUTES[h](); } catch (e) { fail(e); }
   document.documentElement.dataset.nav = direction;
-  if (!["#/", "#/site", "#/app", "#/login"].includes(h)) decorate();
+  if (!["#/", "#/site", "#/app", "#/login", "#/tv"].includes(h)) decorate();
   fitNotches();
   if (h !== "#/login") $view.focus({ preventScroll: true });
   const section = new URLSearchParams(location.hash.split("?")[1] || "").get("section");
@@ -1493,13 +1551,14 @@ async function route() {
   const { data } = await sb.auth.getSession();
   state.session = data.session;
   await loadProfile();
+  Outbox.flush();
   if (location.search.includes("code=")) history.replaceState(null, "", location.pathname + "#/app");
   sb.auth.onAuthStateChange(async (event, session) => {
     const was = !!state.session;
     state.session = session;
     if (event === "SIGNED_IN" && !was) {
       // Supabase advises not awaiting its own calls inside this callback.
-      setTimeout(async () => { await loadProfile(); if (location.hash !== "#/app") location.hash = "#/app"; else route(); }, 0);
+      setTimeout(async () => { await loadProfile(); Outbox.flush(); if (location.hash !== "#/app") location.hash = "#/app"; else route(); }, 0);
     }
     if (event === "SIGNED_OUT" && location.hash !== "#/login") { state.profile = null; location.hash = "#/login"; }
   });
