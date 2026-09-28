@@ -177,3 +177,24 @@ Migration `desk_passes` (`supabase/passes.sql`) adds `give_pass`, `cancel_pass` 
   midnight after 30 March). Days must be 1–400.
 - **Ending in the next 7 days** lists passes to renew. Every give, extend and cancel is kept in
   `membership_log` with the staff member, days and payment channel (admins can read it).
+
+## 16. Trip passport, return code and Google reviews
+
+Migration `wave3_trip` (`supabase/wave3.sql`) adds the `review_url` and `return_offer`
+settings, the `return_codes` table and the `my_return_code` / `redeem_return_code` functions.
+
+- **Settings → Google reviews and return visits**
+  - **Google review link:** paste the link from your Google Business Profile ("Ask for
+    reviews" gives a `g.page/r/…/review` link). Only Google's own addresses are accepted.
+    Leave empty to hide the request.
+  - **Return-visit offer (optional):** for example "10% off your next day pass". Leave empty
+    and no codes are made.
+- **Members:** the dashboard shows a **Gym passport** after their first check-in: one stamp
+  per training day, and **Share card** (a picture made on the phone, name only if ticked).
+  With an offer set, it also shows their personal code `BACK-XXXXXX`.
+- **Google review request:** shown the same way to every member once a visit is finished
+  (checked out or in for over an hour). "Not now" hides it for 30 days; opening the link
+  hides it for good on that phone. Google forbids rewards for reviews and asking only
+  happy customers, so the request never mentions the offer and nobody is filtered.
+- **Front desk → Return code:** type the code. It says whose it is and uses it once; a used
+  code says when it was used. Apply the offer at the till as usual.

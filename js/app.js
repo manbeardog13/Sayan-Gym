@@ -532,14 +532,14 @@ function buildTodayPlan(exercises, recovery, targets, profile) {
 async function viewDashboard() {
   $view.innerHTML = `<div class="loading">…</div>`;
   const uid = state.session.user.id;
-  const [pl, tg, rc, ms, ex, quotes, hist, news, onboard, bells, strip, crew] = await Promise.all([
+  const [pl, tg, rc, ms, ex, quotes, hist, news, onboard, bells, strip, crew, trip] = await Promise.all([
     sb.rpc("my_power_level"), sb.rpc("my_next_targets"), sb.rpc("my_recovery"),
     sb.from("memberships").select("*, membership_plans(name_hr,name_en)").eq("user_id", uid).eq("status", "active")
       .order("ends_at", { ascending: false, nullsFirst: true }).limit(1),
     loadExercises(), loadQuotes(),
     sb.from("workouts").select("id, performed_on, workout_sets(count)").eq("user_id", state.session.user.id).order("performed_on", { ascending: false }).limit(4),
     newsFeedHtml().catch(() => ""), onboardingHtml().catch(() => ""), bellsHtml().catch(() => ""), loadStreamItems(),
-    crewTeaserHtml().catch(() => ""),
+    crewTeaserHtml().catch(() => ""), loadSettings().then(tripDashHtml).catch(() => ""),
   ]);
   for (const r of [pl, tg, rc, ms]) if (r.error) return fail(r.error);
   const p = pl.data[0];
@@ -635,6 +635,7 @@ async function viewDashboard() {
         || `<p class="plan-meta">${esc(t("history_empty"))}</p>`}
     </div>
   </section>
+  ${trip}
   ${crew}
   ${bells}
   ${news}
@@ -652,7 +653,7 @@ async function viewDashboard() {
     </div>
   </dialog>`;
 
-  animateIn($view); wireInstallCoach(); wireStream(); wireKudos($view);
+  animateIn($view); wireInstallCoach(); wireStream(); wireKudos($view); wireTrip();
   const dlg = document.getElementById("pass-dlg");
   document.getElementById("pass-open").onclick = (e) => { e.preventDefault(); dlg.showModal(); };
   document.getElementById("pass-x").onclick = () => dlg.close();
@@ -982,10 +983,11 @@ async function viewProfile() {
    ========================================================= */
 async function viewDesk() {
   if (!isStaff()) { $view.innerHTML = `<div class="page"><p>${esc(t("staff_only"))}</p></div>`; return; }
-  const [inside, radar, greet, club, passes] = await Promise.all([
+  const [inside, radar, greet, club, passes, ret] = await Promise.all([
     sb.from("check_ins").select("id, user_id, checked_in_at").is("checked_out_at", null)
       .gt("checked_in_at", new Date(Date.now() - 3 * 3600e3).toISOString()).order("checked_in_at", { ascending: false }),
     sb.rpc("churn_radar"), greetHtml().catch(() => ""), clubDeskHtml().catch(() => ""), passesDeskHtml().catch(() => ""),
+    loadSettings().then(returnDeskHtml).catch(() => ""),
   ]);
   if (inside.error) return fail(inside.error);
   const ids = [...new Set((inside.data || []).map((c) => c.user_id))];
@@ -1025,6 +1027,7 @@ async function viewDesk() {
           </div>`).join("")}
       </section>
       ${passes}
+      ${ret}
       ${club}
     </div>
   </div>`;
@@ -1032,6 +1035,7 @@ async function viewDesk() {
   wireGreet(viewDesk);
   wireClubDesk(viewDesk);
   wirePassesDesk(viewDesk);
+  wireReturnDesk();
   const checkIn = async (raw) => {
     const code = String(raw).replace(/^SAIYAN:/i, "").trim().toLowerCase();
     if (!code) return;
@@ -1138,6 +1142,8 @@ async function viewAdmin() {
         <input id="pay" type="url" placeholder="${esc(t("a_payment_ph"))}" value="${esc(settings.payment_url || "")}">
         <button class="btn btn-primary btn-sm" id="save-pay" type="button" style="margin-top:10px">${esc(t("save"))}</button>
       </section>
+
+      ${tripSettingsHtml(settings)}
 
       <section class="card span-6" aria-labelledby="agal">
         <h2 id="agal">${esc(t("a_gallery"))}</h2>
@@ -1246,6 +1252,7 @@ async function viewAdmin() {
     viewAdmin();
   };
 
+  wireTripSettings();
   document.getElementById("save-pay").onclick = async () => {
     const raw = document.getElementById("pay").value.trim();
     const url = raw ? safeHttps(raw) : null;
