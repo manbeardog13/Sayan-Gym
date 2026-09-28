@@ -687,3 +687,14 @@ html.tv-mode .shell{max-width:none;padding:24px 32px}
 .pd-none{color:var(--ink-2)}
 .pd-soon{color:var(--ink);font-weight:650}
 .pd-member + .pd-form{padding:0 2px 12px}
+
+/* Trip passport and review prompt */
+.trip .stamps{list-style:none;margin:12px 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:10px}
+.stamp{aspect-ratio:1;border-radius:50%;box-shadow:inset 0 0 0 2px var(--lava);display:grid;place-content:center;text-align:center;color:var(--ink);font:600 11.5px Inter;line-height:1.2}
+.stamp b{font:800 17px Sora,sans-serif;color:var(--ink)}
+.stamp:nth-child(3n){transform:rotate(-6deg)}.stamp:nth-child(3n+1){transform:rotate(4deg)}
+.trip .toggle-row{margin:4px 0 10px}
+.trip-code{margin-top:14px;padding:12px 14px;border-radius:14px;background:var(--panel-2);display:grid;gap:4px}
+.trip-code code{font:800 22px Sora,sans-serif;letter-spacing:.06em;color:var(--ink)}
+.review-ask .inline-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+@media (prefers-reduced-motion:reduce){.stamp{transform:none!important}}
