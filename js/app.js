@@ -982,10 +982,10 @@ async function viewProfile() {
    ========================================================= */
 async function viewDesk() {
   if (!isStaff()) { $view.innerHTML = `<div class="page"><p>${esc(t("staff_only"))}</p></div>`; return; }
-  const [inside, radar, greet, club] = await Promise.all([
+  const [inside, radar, greet, club, passes] = await Promise.all([
     sb.from("check_ins").select("id, user_id, checked_in_at").is("checked_out_at", null)
       .gt("checked_in_at", new Date(Date.now() - 3 * 3600e3).toISOString()).order("checked_in_at", { ascending: false }),
-    sb.rpc("churn_radar"), greetHtml().catch(() => ""), clubDeskHtml().catch(() => ""),
+    sb.rpc("churn_radar"), greetHtml().catch(() => ""), clubDeskHtml().catch(() => ""), passesDeskHtml().catch(() => ""),
   ]);
   if (inside.error) return fail(inside.error);
   const ids = [...new Set((inside.data || []).map((c) => c.user_id))];
@@ -1024,12 +1024,14 @@ async function viewDesk() {
             <span class="score">${r.risk_score}</span>
           </div>`).join("")}
       </section>
+      ${passes}
       ${club}
     </div>
   </div>`;
 
   wireGreet(viewDesk);
   wireClubDesk(viewDesk);
+  wirePassesDesk(viewDesk);
   const checkIn = async (raw) => {
     const code = String(raw).replace(/^SAIYAN:/i, "").trim().toLowerCase();
     if (!code) return;
