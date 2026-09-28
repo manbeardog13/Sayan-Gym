@@ -162,3 +162,18 @@ and the `push` function. Everything rewards showing up, never kilos or bodyweigh
 - **Offline-safe logging**: sets typed in the logger are kept on the phone until saved (a reload brings them back),
   and a saved workout waits on the phone until the server has it. The phone makes the ids, so a retry can't create
   a duplicate. The app shell and the two pinned CDN scripts are cached, so the app opens with no signal.
+
+## 15. Members and passes (Front desk)
+
+Migration `desk_passes` (`supabase/passes.sql`) adds `give_pass`, `cancel_pass` and the
+`membership_log` audit table. Nothing to configure.
+
+- **Front desk → Members and passes**: type two letters of a name to see the member's pass.
+  Coaches and admins can **Check in** a member who has a valid pass, without the QR code.
+- **Admins only**: **Give pass** / **Renew** (plan, days, paid at the desk / Multisport / online)
+  and **Cancel pass**. Renewing the plan the member already has adds the days to the end of
+  their current pass, so their QR code keeps working. Add-ons (towel, PT) are not passes.
+- A new pass runs to the end of the last day, Zagreb time (30 days given on 1 March ends at
+  midnight after 30 March). Days must be 1–400.
+- **Ending in the next 7 days** lists passes to renew. Every give, extend and cancel is kept in
+  `membership_log` with the staff member, days and payment channel (admins can read it).

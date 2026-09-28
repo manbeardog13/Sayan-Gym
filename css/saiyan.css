@@ -680,3 +680,10 @@ html.tv-mode .shell{max-width:none;padding:24px 32px}
 /* logger: suggestions are placeholders, clearly lighter than what was entered */
 .page .set-row input::placeholder{color:var(--muted);opacity:.6}
 .log-hint{margin:12px 0 0}
+
+/* Members and passes (desk) */
+.pd-member{flex-wrap:wrap}
+.pd-actions{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;margin-left:auto}
+.pd-none{color:var(--ink-2)}
+.pd-soon{color:var(--ink);font-weight:650}
+.pd-member + .pd-form{padding:0 2px 12px}
