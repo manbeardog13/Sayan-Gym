@@ -680,7 +680,7 @@ async function viewLog() {
   const draft = Draft.read();
   const blocks = draft ? draft.blocks.filter((b) => ex.some((e) => e.id === b.exercise_id)) : plan.list.map(({ e, target }) => ({
     exercise_id: e.id,
-    sets: [{ load: target ? target.suggest_load : "", reps: target ? target.suggest_reps : "", rpe: "" }],
+    sets: [newSet(target?.suggest_load, target?.suggest_reps)],
   }));
 
   $view.innerHTML = `
@@ -697,7 +697,9 @@ async function viewLog() {
         ${draft ? `<p class="small draft-note" role="status">${esc(L("Vraćene su tvoje nespremljene serije.", "Your unsaved sets are back."))}
           <button class="btn btn-ghost btn-sm" id="fresh" type="button">${esc(L("Počni ispočetka", "Start fresh"))}</button></p>` : ""}
         ${outboxNoteHtml()}
-        <div id="blocks" style="margin-top:18px"></div>
+        <p class="small muted log-hint">${esc(L("Sive brojke su prijedlozi. Označi ✓ kad odradiš seriju ili upiši što si digao/la — spremaju se samo te serije.",
+          "Grey numbers are suggestions. Tick ✓ when you've done a set, or type what you lifted — only those sets are saved."))}</p>
+        <div id="blocks" style="margin-top:12px"></div>
         ${workoutBarHtml()}
         <button class="btn btn-primary" id="save" type="button" style="width:100%;margin-top:8px">${esc(t("save_workout"))}</button>
       </section>
@@ -724,9 +726,9 @@ async function viewLog() {
         ${b.sets.map((s, si) => `
           <div class="set-row${s.done ? " done" : ""}">
             <span class="set-no">${si + 1}</span>
-            <input inputmode="decimal" aria-label="${esc(t("load"))}" data-b="${bi}" data-s="${si}" data-f="load" value="${s.load}">
-            <input inputmode="numeric" aria-label="${esc(t("reps"))}" data-b="${bi}" data-s="${si}" data-f="reps" value="${s.reps}">
-            <input inputmode="decimal" aria-label="${esc(t("rpe"))}" data-b="${bi}" data-s="${si}" data-f="rpe" value="${s.rpe}" placeholder="—">
+            <input inputmode="decimal" aria-label="${esc(t("load"))}" data-b="${bi}" data-s="${si}" data-f="load" value="${esc(s.load)}" placeholder="${esc(s.sugLoad ?? "")}">
+            <input inputmode="numeric" aria-label="${esc(t("reps"))}" data-b="${bi}" data-s="${si}" data-f="reps" value="${esc(s.reps)}" placeholder="${esc(s.sugReps ?? "")}">
+            <input inputmode="decimal" aria-label="${esc(t("rpe"))}" data-b="${bi}" data-s="${si}" data-f="rpe" value="${esc(s.rpe)}" placeholder="—">
             <button class="icon-btn set-done" data-done="${bi}:${si}" type="button" aria-pressed="${!!s.done}" aria-label="${esc(L("Serija gotova — pokreni odmor", "Set done — start rest"))}">✓</button>
             <button class="icon-btn" data-rms="${bi}:${si}" type="button" aria-label="${esc(L("Ukloni seriju", "Remove set"))}">−</button>
           </div>`).join("")}
@@ -747,7 +749,7 @@ async function viewLog() {
     const id = e.target.value; if (!id) return;
     touched = true;
     const tg = targets[id];
-    blocks.push({ exercise_id: id, sets: [{ load: tg ? tg.suggest_load : "", reps: tg ? tg.suggest_reps : "", rpe: "" }] });
+    blocks.push({ exercise_id: id, sets: [newSet(tg?.suggest_load, tg?.suggest_reps)] });
     e.target.value = ""; draw();
   };
   document.getElementById("blocks").addEventListener("input", (e) => {
@@ -762,25 +764,21 @@ async function viewLog() {
     if (d.plates == null) touched = true;
     if (d.done != null) {
       const [b, si] = d.done.split(":"), set = blocks[b].sets[si];
-      set.done = !set.done; draw();
+      if (!tickSet(set)) return toast(L("Upiši težinu i ponavljanja.", "Enter the weight and reps."));
+      draw();
       if (set.done) { buzz(30); Workout.start(restFor(ex.find((x) => x.id === blocks[b].exercise_id))); }
       return;
     }
-    if (d.plates != null) { const cur = blocks[d.plates].sets.findLast((x) => !x.done) || blocks[d.plates].sets.at(-1); return openPlates(cur.load); }
-    if (d.add != null) { const last = blocks[d.add].sets.at(-1); blocks[d.add].sets.push({ ...last, done: false }); draw(); }
+    if (d.plates != null) { const cur = blocks[d.plates].sets.findLast((x) => !x.done) || blocks[d.plates].sets.at(-1); return openPlates(hasVal(cur.load) ? cur.load : cur.sugLoad); }
+    if (d.add != null) { blocks[d.add].sets.push(nextSet(blocks[d.add].sets.at(-1))); draw(); }
     if (d.rmb != null) { blocks.splice(d.rmb, 1); draw(); }
     if (d.rms != null) { const [b, s] = d.rms.split(":"); blocks[b].sets.splice(s, 1); if (!blocks[b].sets.length) blocks.splice(b, 1); draw(); }
   });
   draw();
   document.getElementById("save").onclick = async (ev) => {
-    const rows = [];
-    blocks.forEach((b) => b.sets.forEach((s, i) => {
-      const load = parseFloat(s.load), reps = parseInt(s.reps, 10), rpe = s.rpe === "" ? null : parseFloat(s.rpe);
-      // same limits as the database, so a saved set can never be rejected later
-      if (!isNaN(load) && load >= 0 && load <= 600 && reps > 0 && reps <= 100)
-        rows.push({ exercise_id: b.exercise_id, set_no: i + 1, load_kg: load, reps, rpe: rpe && rpe >= 5 && rpe <= 10 ? rpe : null });
-    }));
-    if (!rows.length) return toast(t("no_sets"));
+    // Only sets the member typed or ticked; untouched suggestions are never saved.
+    const rows = logRows(blocks);
+    if (!rows.length) return toast(L("Označi ✓ serije koje si odradio/la ili upiši težinu i ponavljanja.", "Tick ✓ the sets you did, or type the weight and reps."), 4000);
     ev.target.disabled = true;
     const day = document.getElementById("d").value || todayZagreb();
     // The phone picks the ids and keeps the workout until the server has it, so a retry
