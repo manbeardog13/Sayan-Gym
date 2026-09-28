@@ -132,3 +132,33 @@ Scripts may only come from this site and cdn.jsdelivr.net, never inline; the thr
 qrcode-generator, html5-qrcode) are pinned with `integrity` hashes. When you add an outside service (a new API,
 image host or script), add its domain to the policy. When you upgrade a CDN script version, replace its hash:
 `curl -s URL | openssl dgst -sha384 -binary | openssl base64 -A`. Styles still allow inline `style=""`.
+
+## 14. Wave 2 (community)
+
+`supabase/wave2.sql` (applied as migrations `wave2_community`, `wave2_best_times_levels`, `wave2_push_schedule`)
+and the `push` function. Everything rewards showing up, never kilos or bodyweight.
+
+- **Crew page** (`#/crew`): team season, monthly quests, the PR bell with Ki blast kudos (one tap, no comments),
+  the 300/400/500 kg club and "best time to come".
+- **Team seasons**: Settings → Seasons and quests. 6–8 weeks, 2–4 teams. Members join themselves and land in the
+  smallest team. 10 points per training day (a desk check-in or a logged workout, up to 4 a week) plus 10 for a
+  week with 2 or more; teams are ranked by the average per member, so team size doesn't decide the winner.
+- **Monthly quests**: Settings → Seasons and quests → Add quest (training days, desk check-ins, weeks with 2+
+  sessions, or logged sets, optionally for one exercise).
+- **300/400/500 kg club**: Front desk → club card. Staff record squat, bench and deadlift they watched; the database
+  stamps who verified it and when. Names and totals show only for members who switch on "Show my first name on the
+  boards and the gym screen" (Profile or Crew); everyone else counts as "+1".
+- **Gym TV** (`#/tv`): sign in as staff on the TV browser and open Front desk → Gym TV screen. It refreshes every
+  minute and keeps the screen awake.
+- **Best time to come**: hourly quiet / medium / busy from the last 8 weeks of desk check-ins. Nothing shows until
+  there are 30 visits, and hours with fewer than 5 are hidden. It fills in as the desk scans passes.
+- **Push notifications** (Profile → Notifications): opt-in, at most one a day per device, €0 (Web Push straight to
+  the browser's push service; the VAPID keys are made by the `push` function and kept in `push_config`, which only
+  the server can read). Every 15 minutes `pg_cron` calls the function (job `push-tick`, authorised by the
+  `push_cron_key` Vault secret). It sends "News from Zrinko" when a members post is published (08–21), or
+  "Quiet at the gym" when an hour that is normally medium or busy has 3 or fewer people in and it's near the
+  member's usual check-in hour. On iPhone this works only after "Add to Home Screen". `PUSH_QUIET_MAX` (secret)
+  changes the 3.
+- **Offline-safe logging**: sets typed in the logger are kept on the phone until saved (a reload brings them back),
+  and a saved workout waits on the phone until the server has it. The phone makes the ids, so a retry can't create
+  a duplicate. The app shell and the two pinned CDN scripts are cached, so the app opens with no signal.

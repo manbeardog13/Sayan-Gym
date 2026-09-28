@@ -204,7 +204,7 @@ function celebratePRs(prs) {
       <button class="btn btn-ghost" id="pr-share" type="button">${esc(L("Podijeli karticu", "Share card"))}</button>
       <button class="btn btn-ghost" id="pr-done" type="button">${esc(L("Gotovo", "Done"))}</button>
     </div>
-    <p class="small muted">${esc(L("Zvono pokazuje tvoje ime i dizanje članovima 14 dana.", "The bell shows your first name and lift to members for 14 days."))}</p>
+    <p class="small muted">${esc(L("Zvono pokazuje tvoje ime i dizanje članovima i na ekranu u teretani 14 dana.", "The bell shows your first name and lift to members and on the gym screen for 14 days."))}</p>
   </div>`;
   document.body.append(dlg);
   const close = () => { dlg.close(); dlg.remove(); location.hash = "#/app"; };
@@ -245,10 +245,13 @@ async function onboardingHtml() {
   </section>`;
 }
 async function bellsHtml() {
-  const { data } = await sb.from("pr_bells").select("first_name, load_kg, reps, created_at, exercises(name_hr,name_en)").order("created_at", { ascending: false }).limit(6);
+  const [{ data }, mine] = await Promise.all([
+    sb.from("pr_bells").select("id, first_name, load_kg, reps, created_at, exercises(name_hr,name_en), pr_kudos(count)").order("created_at", { ascending: false }).limit(6),
+    myKudos(),
+  ]);
   if (!data || !data.length) return "";
-  return `<div class="bells" aria-label="${esc(L("Zvono rekorda", "PR bell"))}"><span class="bells-k">🔔 ${esc(L("Zvono rekorda", "PR bell"))}</span>
-    ${data.map((b) => `<span class="bell"><b>${esc(b.first_name || "—")}</b> ${esc(b.exercises ? nameOf(b.exercises) : "")} ${fmtKg(b.load_kg)} × ${b.reps}</span>`).join("")}</div>`;
+  return `<div class="bells" aria-label="${esc(L("Zvono rekorda", "PR bell"))}"><a class="bells-k" href="#/crew">🔔 ${esc(L("Zvono rekorda", "PR bell"))}</a>
+    ${data.map((b) => `<span class="bell"><b>${esc(b.first_name || "—")}</b> ${esc(b.exercises ? nameOf(b.exercises) : "")} ${fmtKg(b.load_kg)} × ${b.reps} ${kudosButton(b, mine)}</span>`).join("")}</div>`;
 }
 
 // iPhone has no install prompt; show how once. Android uses the browser's prompt.

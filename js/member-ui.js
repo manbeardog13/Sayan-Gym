@@ -14,15 +14,16 @@ function renderDock(route) {
     { key: 'train', label: L('Trening', 'Train'), icon: ICO.plus, links: member ? [
       ['#/app', L('Moj trening', 'My training')],
       ['#/log', L('Dnevnik', 'Log')],
-      ['#/progress', L('Napredak', 'Progress')]] : [['#/login', t('sign_in')]] },
+      ['#/progress', L('Napredak', 'Progress')],
+      ['#/crew', L('Ekipa', 'Crew')]] : [['#/login', t('sign_in')]] },
     { key: 'me', label: L('Ja', 'Me'), icon: ICO.user, links: member ? [
       ['#/profile', t('nav_profile')]] : [] },
   ];
   if (isStaff()) groups.push({ key: 'staff', label: L('Osoblje', 'Staff'), icon: ICO.scan, links: [
-    ['#/desk', L('Recepcija', 'Desk')], ...(isAdmin() ? [
+    ['#/desk', L('Recepcija', 'Desk')], ['#/tv', L('Ekran za TV', 'Gym TV')], ...(isAdmin() ? [
       ['#/admin', t('nav_admin')], ['#/studio', 'Studio']] : [])] });
-  const active = ['#/desk', '#/admin', '#/studio', '#/ideas'].includes(route) ? 'staff'
-    : route === '#/profile' ? 'me' : ['#/app', '#/log', '#/progress', '#/login'].includes(route) ? 'train' : 'gym';
+  const active = ['#/desk', '#/tv', '#/admin', '#/studio', '#/ideas'].includes(route) ? 'staff'
+    : route === '#/profile' ? 'me' : ['#/app', '#/log', '#/progress', '#/crew', '#/login'].includes(route) ? 'train' : 'gym';
   const dock = document.createElement('nav');
   dock.className = 'member-dock';
   dock.setAttribute('aria-label', L('Glavna navigacija', 'Main navigation'));
