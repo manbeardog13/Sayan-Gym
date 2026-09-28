@@ -139,6 +139,35 @@ function openPlates(load) {
   dlg.showModal();
 }
 
+/* ---------- Logger: only the sets the member did ---------- */
+// Suggestions are placeholders, never values: a set counts once the member types its numbers
+// or ticks it (a tick means "done as suggested" and fills the suggestion in).
+const hasVal = (v) => v !== "" && v != null;
+const newSet = (sugLoad, sugReps) => ({ load: "", reps: "", rpe: "", sugLoad: hasVal(sugLoad) ? String(sugLoad) : "", sugReps: hasVal(sugReps) ? String(sugReps) : "" });
+// The next set suggests what the member just did (or was offered).
+const nextSet = (last) => newSet(hasVal(last?.load) ? last.load : last?.sugLoad, hasVal(last?.reps) ? last.reps : last?.sugReps);
+// Returns false when there is nothing to tick yet (no numbers typed and no suggestion).
+function tickSet(set) {
+  if (set.done) { set.done = false; return true; }
+  if (!hasVal(set.load) && hasVal(set.sugLoad)) set.load = String(set.sugLoad);
+  if (!hasVal(set.reps) && hasVal(set.sugReps)) set.reps = String(set.sugReps);
+  if (!hasVal(set.load) || !hasVal(set.reps)) return false;
+  set.done = true; return true;
+}
+// Rows to save: only sets with real numbers, within the database's limits, numbered per exercise.
+function logRows(blocks) {
+  const rows = [];
+  blocks.forEach((b) => {
+    let n = 0;
+    b.sets.forEach((s) => {
+      const load = parseFloat(s.load), reps = parseInt(s.reps, 10), rpe = hasVal(s.rpe) ? parseFloat(s.rpe) : null;
+      if (hasVal(s.load) && hasVal(s.reps) && !isNaN(load) && load >= 0 && load <= 600 && reps > 0 && reps <= 100)
+        rows.push({ exercise_id: b.exercise_id, set_no: ++n, load_kg: load, reps, rpe: rpe && rpe >= 5 && rpe <= 10 ? rpe : null });
+    });
+  });
+  return rows;
+}
+
 /* ---------- PR detection + celebration ---------- */
 // Compares this session's best e1RM per exercise (sets of ≤10 reps) with every earlier day's best.
 async function findPRs(rows, performedOn, exercises) {

@@ -448,7 +448,7 @@ a.row[aria-current="page"]{background:var(--lava-tint);margin:0 -8px;padding-lef
 .act .eyebrow{text-shadow:0 1px 3px rgba(2,3,5,.85)}
 
 /* ---------- Wave 1: workout mode ---------- */
-.set-row{grid-template-columns:26px 1fr 1fr 1fr 40px 36px}
+.set-row{grid-template-columns:20px 1.35fr 1fr 1fr 40px 36px}   /* kg gets room for "107.5" on a phone */
 .set-row.done input{opacity:.55}
 .set-done[aria-pressed="true"]{background:var(--green)!important;color:#fff;box-shadow:none}
 .ex-tools{display:flex;align-items:center;gap:6px}
@@ -676,3 +676,7 @@ html.tv-mode .shell{max-width:none;padding:24px 32px}
 .tv-post img{width:100%;flex:1;min-height:0;object-fit:cover;border-radius:18px}
 .tv-post b{font:700 24px Sora}
 @media(max-width:1000px){ .tv-grid{grid-template-columns:1fr;grid-auto-rows:auto} .tv-big{font-size:80px} html.tv-mode .shell{padding:16px} .tv-head .wordmark{height:32px} .tv-clock{font-size:24px} }
+
+/* logger: suggestions are placeholders, clearly lighter than what was entered */
+.page .set-row input::placeholder{color:var(--muted);opacity:.6}
+.log-hint{margin:12px 0 0}
