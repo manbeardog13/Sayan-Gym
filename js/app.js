@@ -532,7 +532,7 @@ function buildTodayPlan(exercises, recovery, targets, profile) {
 async function viewDashboard() {
   $view.innerHTML = `<div class="loading">…</div>`;
   const uid = state.session.user.id;
-  const [pl, tg, rc, ms, ex, quotes, hist, news, onboard, bells, strip, crew, trip] = await Promise.all([
+  const [pl, tg, rc, ms, ex, quotes, hist, news, onboard, bells, strip, crew, trip, wrapped] = await Promise.all([
     sb.rpc("my_power_level"), sb.rpc("my_next_targets"), sb.rpc("my_recovery"),
     sb.from("memberships").select("*, membership_plans(name_hr,name_en)").eq("user_id", uid).eq("status", "active")
       .order("ends_at", { ascending: false, nullsFirst: true }).limit(1),
@@ -540,6 +540,7 @@ async function viewDashboard() {
     sb.from("workouts").select("id, performed_on, workout_sets(count)").eq("user_id", state.session.user.id).order("performed_on", { ascending: false }).limit(4),
     newsFeedHtml().catch(() => ""), onboardingHtml().catch(() => ""), bellsHtml().catch(() => ""), loadStreamItems(),
     crewTeaserHtml().catch(() => ""), loadSettings().then(tripDashHtml).catch(() => ""),
+    wrappedTeaserHtml().catch(() => ""),
   ]);
   for (const r of [pl, tg, rc, ms]) if (r.error) return fail(r.error);
   const p = pl.data[0];
@@ -635,6 +636,7 @@ async function viewDashboard() {
         || `<p class="plan-meta">${esc(t("history_empty"))}</p>`}
     </div>
   </section>
+  ${wrapped}
   ${trip}
   ${crew}
   ${bells}
@@ -1522,9 +1524,9 @@ async function signOut() {
 const ROUTES = {
   "#/site": viewLanding, "#/login": viewLogin,
   "#/app": viewDashboard, "#/log": viewLog, "#/progress": viewProgress, "#/profile": viewProfile, "#/desk": viewDesk, "#/admin": viewAdmin, "#/studio": viewStudio, "#/ideas": viewStudio,
-  "#/crew": viewCrew, "#/tv": viewTv,
+  "#/crew": viewCrew, "#/tv": viewTv, "#/wrapped": viewWrapped,
 };
-const PROTECTED = new Set(["#/app", "#/log", "#/progress", "#/profile", "#/desk", "#/admin", "#/studio", "#/ideas", "#/crew", "#/tv"]);
+const PROTECTED = new Set(["#/app", "#/log", "#/progress", "#/profile", "#/desk", "#/admin", "#/studio", "#/ideas", "#/crew", "#/tv", "#/wrapped"]);
 
 const navigationMotion = createNavigationMotion(history);
 window.addEventListener("popstate", navigationMotion.onPop);

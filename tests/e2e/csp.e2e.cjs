@@ -7,7 +7,7 @@ let srv, browser;
 before(async () => { srv = await serve(); browser = await launch(); });
 after(async () => { await browser?.close(); await srv?.close(); });
 
-const ROUTES = [["#/site", true], ["#/login", true], ["#/app"], ["#/log"], ["#/progress"], ["#/profile"], ["#/desk"], ["#/admin"], ["#/crew"], ["#/tv"], ["#/studio?tab=idea"]];
+const ROUTES = [["#/site", true], ["#/login", true], ["#/app"], ["#/log"], ["#/progress"], ["#/profile"], ["#/desk"], ["#/admin"], ["#/crew"], ["#/tv"], ["#/studio?tab=idea"], ["#/wrapped"]];
 for (const [route, signedOut = false] of ROUTES) {
   test(`${route}${signedOut ? " (signed out)" : ""}: no CSP violations, no page errors`, async () => {
     const { page: p, ctx } = await openApp(browser, srv.base, { route, signedOut, width: 1280, wait: 1800 });
