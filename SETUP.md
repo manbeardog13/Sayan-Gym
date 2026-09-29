@@ -144,8 +144,12 @@ and the `push` function. Everything rewards showing up, never kilos or bodyweigh
 - **Team seasons**: Settings → Seasons and quests. 6–8 weeks, 2–4 teams. Members join themselves and land in the
   smallest team. 10 points per training day (a desk check-in or a logged workout, up to 4 a week) plus 10 for a
   week with 2 or more; teams are ranked by the average per member, so team size doesn't decide the winner.
-- **Monthly quests**: Settings → Seasons and quests → Add quest (training days, desk check-ins, weeks with 2+
-  sessions, or logged sets, optionally for one exercise).
+- **Monthly quests**: three standard quests (8 training days, 3 weeks with 2+ sessions, 60 logged sets) are added
+  automatically in the first week of each month (job `monthly-quests`, migration `quests_auto`,
+  `supabase/quests_auto.sql`). A quest you delete stays deleted; untick "Add the 3 standard quests every month"
+  in Settings → Seasons and quests to stop it, or tap "Add the standard quests to this month" to get them now.
+  Add your own with Add quest (training days, desk check-ins, weeks with 2+ sessions, or logged sets, optionally
+  for one exercise).
 - **300/400/500 kg club**: Front desk → club card. Staff record squat, bench and deadlift they watched; the database
   stamps who verified it and when. Names and totals show only for members who switch on "Show my first name on the
   boards and the gym screen" (Profile or Crew); everyone else counts as "+1".

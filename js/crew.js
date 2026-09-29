@@ -398,13 +398,19 @@ async function viewTv() {
 /* =========================================================
    ADMIN: seasons and quests
    ========================================================= */
+// The quests add_default_quests() / the monthly job create (supabase/quests_auto.sql).
+const STANDARD_QUESTS = ["days", "strong_weeks", "sets"];
 async function crewAdminHtml() {
-  const [st, open, quests, ex] = await Promise.all([
+  const [st, open, quests, ex, auto] = await Promise.all([
     sb.from("seasons").select("id,name,starts_on,ends_on,season_teams(name)").order("starts_on", { ascending: false }).limit(4),
     sb.rpc("season_standings"),
     sb.from("quests").select("*").eq("month", todayZagreb().slice(0, 8) + "01").order("created_at"),
     loadExercises(),
+    sb.from("site_settings").select("value").eq("key", "auto_quests").maybeSingle(),
   ]);
+  const autoOn = auto.data?.value !== "off";
+  const kindsNow = new Set((quests.data || []).filter((q) => !q.exercise_id).map((q) => q.kind));
+  const missingStd = STANDARD_QUESTS.filter((k) => !kindsNow.has(k)).length;
   const nextMon = (() => { const d = new Date(todayZagreb() + "T12:00"); d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7)); return d.toISOString().slice(0, 10); })();
   const names = L(["Lava", "Čelik", "Grom", "Val"], ["Lava", "Steel", "Thunder", "Wave"]);
   const qk = Object.entries(QUEST_KINDS);
@@ -422,6 +428,10 @@ async function crewAdminHtml() {
     <div class="form-grid" style="margin-top:8px">${names.map((n, i) => `<div><label>${esc(L("Ekipa", "Team"))} ${i + 1}${i > 1 ? ` (${esc(L("neobavezno", "optional"))})` : ""}</label><input data-team maxlength="30" value="${i < 3 ? esc(n) : ""}"></div>`).join("")}</div>
     <button class="btn btn-primary btn-sm" id="se-create" type="button" style="margin-top:10px">${esc(L("Pokreni sezonu", "Start the season"))}</button>`}
     <h3 class="sub-h">${esc(L("Izazovi ovog mjeseca", "This month's quests"))}</h3>
+    <label class="toggle-row small"><input type="checkbox" id="qu-auto"${autoOn ? " checked" : ""}> <span>${esc(L(
+      "Svaki mjesec sam dodaj 3 standardna izazova (8 dana treninga, 3 tjedna s 2+ treninga, 60 serija). Obrisani ostaju obrisani.",
+      "Add the 3 standard quests every month (8 training days, 3 weeks with 2+ sessions, 60 sets). Deleted ones stay deleted."))}</span></label>
+    ${missingStd ? `<button class="btn btn-ghost btn-sm" id="qu-std" type="button">${esc(L(`Dodaj standardne izazove za ovaj mjesec (${missingStd})`, `Add the standard quests to this month (${missingStd})`))}</button>` : ""}
     ${(quests.data || []).map((q) => `<div class="row" data-quest="${q.id}"><span>${esc(L(q.title_hr, q.title_en))} <span class="muted">· ${esc(L(...QUEST_KINDS[q.kind]))} ${q.target}</span></span>
       <button class="icon-btn" type="button" data-del-quest aria-label="${esc(t("a_delete"))}">✕</button></div>`).join("") || `<p class="small muted">${esc(L("Još nema izazova.", "No quests yet."))}</p>`}
     <div class="form-grid" style="margin-top:10px">
@@ -461,6 +471,18 @@ function wireCrewAdmin(reload) {
   };
   ["qu-kind", "qu-target", "qu-ex"].forEach((id) => document.getElementById(id)?.addEventListener("input", fill));
   fill();
+  document.getElementById("qu-auto").onchange = async (e) => {
+    const { error } = await sb.from("site_settings").upsert({ key: "auto_quests", value: e.target.checked ? "on" : "off", updated_at: new Date().toISOString() });
+    if (error) { e.target.checked = !e.target.checked; return fail(error); }
+    toast(e.target.checked ? L("Izazovi će se dodavati svaki mjesec.", "Quests will be added every month.") : L("Automatski izazovi isključeni.", "Automatic quests switched off."));
+  };
+  const std = document.getElementById("qu-std");
+  if (std) std.onclick = async () => {
+    std.disabled = true;
+    const { data, error } = await sb.rpc("add_default_quests");
+    if (error) { std.disabled = false; return fail(error); }
+    toast(L(`Dodano izazova: ${data ?? 0}.`, `Quests added: ${data ?? 0}.`)); reload();
+  };
   document.getElementById("qu-add").onclick = async () => {
     const target = parseInt(document.getElementById("qu-target").value, 10);
     if (!(target >= 1 && target <= 300)) return toast(L("Cilj 1–300.", "Target 1–300."));

@@ -86,6 +86,7 @@
     ],
     site_settings: [{ key: "payment_url", value: null },
       { key: "review_url", value: TRIP === "off" || TRIP === "none" ? null : "https://g.page/r/CSaiyanTest/review" },
+      { key: "auto_quests", value: "on" },
       { key: "return_offer", value: TRIP === "off" || TRIP === "none" ? null : "10% off your next day pass" }, { key: "hashtag_sets", value: JSON.stringify([{ name: "Gym", tags: "#saiyangym #dubrovnik #gym" }, { name: "Lift", tags: "#powerlifting #deadlift #squat" }]) }],
     idea_threads: [
       { id: "it1", kind: "idea", title: "Tjedni izazov na početnoj", status: "drafting", category: "feature", brief: { goal: "Weekly challenge card on the dashboard", acceptance: ["shows the challenge", "tracks completion"] }, pr_url: null, result_note: null, updated_at: iso(now - 3600e3), archived_at: null },
@@ -110,7 +111,7 @@
     pr_kudos: [{ bell_id: 12, user_id: UID }],
     club_lifts: OPT.noClub ? [] : [{ user_id: UID, squat_kg: 150, bench_kg: 105, deadlift_kg: 185, total_kg: 440, verified_at: iso(now - 3 * day) }, { user_id: "u4", squat_kg: 120, bench_kg: 80, deadlift_kg: 150, total_kg: 350, verified_at: iso(now - 9 * day) }],
     seasons: [{ id: "s1", name: "Jesenska sezona", starts_on: dateOnly(now - 12 * day), ends_on: dateOnly(now + 36 * day), season_teams: [{ name: "Lava" }, { name: "Čelik" }, { name: "Grom" }] }],
-    quests: [{ id: "q1", kind: "days", target: 8, title_hr: "8 dana treninga", title_en: "8 training days" }, { id: "q2", kind: "sets", target: 40, title_hr: "40 serija: Čučanj", title_en: "40 sets: Back squat" }],
+    quests: [{ id: "q1", kind: "days", target: 8, title_hr: "8 dana treninga", title_en: "8 training days" }, { id: "q2", kind: "sets", target: 40, exercise_id: "ex-squat", title_hr: "40 serija: Čučanj", title_en: "40 sets: Back squat" }],
     push_subscriptions: [],
     staff_touches: [],
     posts: [
@@ -251,6 +252,7 @@
       (window.__SG_MOCK_CALLS = window.__SG_MOCK_CALLS || []).push({ rpc: name, args });
       if (name === "give_pass") return Promise.resolve({ data: [{ membership_id: "mX", ends_at: iso(now + (args.p_days + (args.p_user === "u4" ? 3 : 0)) * day), extended: args.p_user === "u4" && args.p_plan === "p3" }], error: null });
       if (name === "cancel_pass") return Promise.resolve({ data: null, error: null });
+      if (name === "add_default_quests") return Promise.resolve({ data: 2, error: null });
       if (name === "my_return_code") return Promise.resolve({ data: [{ code: "BACK-1A2B3C", redeemed_at: TRIP === "used" ? iso(now - day) : null }], error: null });
       if (name === "redeem_return_code") return Promise.resolve(args.p_code === "BACK-1A2B3C" ? { data: [{ display_name: "Marko Perić", already_used: false, used_at: iso(now) }], error: null }
         : args.p_code === "BACK-AAAAAA" ? { data: [{ display_name: "Ana Babić", already_used: true, used_at: iso(now - 3 * day) }], error: null } : { data: null, error: { message: "not found" } });
