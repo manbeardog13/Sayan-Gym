@@ -6,8 +6,18 @@ Run everything from the repository root (Node 20+, no install step):
 node --test tests/*.test.cjs
 ```
 
-GitHub Actions runs the same command on every pull request and on `main`
-(`.github/workflows/tests.yml`). `shell.test.cjs` guards the static shell: every page
+Browser tests drive the real app in headless Chromium against a fake Supabase client
+(`tests/e2e/mock-supabase.js`, fictional people only); every outside request is blocked:
+
+```sh
+npm ci && npx playwright install chromium   # once
+npm run test:browser
+```
+
+They cover the Front desk (passes, return codes), the member dashboard (passport, review
+request), Settings (launch checklist, review link), the workout logger and the content
+security policy on every route. GitHub Actions runs both suites on every pull request and
+on `main` (`.github/workflows/tests.yml`). `shell.test.cjs` guards the static shell: every page
 script exists, parses and is in the service worker's offline cache, and CDN scripts are
 version-pinned with an integrity hash.
 
