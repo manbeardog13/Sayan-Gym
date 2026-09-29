@@ -17,7 +17,9 @@ npm run test:browser
 They cover the Front desk (passes, return codes), the member dashboard (passport, review
 request), Settings (launch checklist, review link), the workout logger and the content
 security policy on every route, plus an axe-core accessibility audit (WCAG 2.1 A/AA and best
-practice) of every screen in light and dark, including opened forms. GitHub Actions runs both suites on every pull request and
+practice) of every screen in light and dark, including opened forms. `offline.e2e.cjs` runs the real service worker: after one visit the
+logger opens with no signal, the pinned CDN scripts come from the cache, and a set saved offline
+waits on the phone and is sent when the connection returns. GitHub Actions runs both suites on every pull request and
 on `main` (`.github/workflows/tests.yml`). `shell.test.cjs` guards the static shell: every page
 script exists, parses and is in the service worker's offline cache, and CDN scripts are
 version-pinned with an integrity hash.
