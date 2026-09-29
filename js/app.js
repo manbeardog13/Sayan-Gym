@@ -1084,11 +1084,13 @@ async function viewAdmin() {
   ]);
   const wire = wireRes?.data && !wireRes.data.error ? wireRes.data : null;
   for (const r of [plans, facts, quotes]) if (r.error) return fail(r.error);
+  const launch = await launchFacts({ plans: plans.data, settings, photos, wire }).then((f) => launchHtml(launchItems(f))).catch(() => "");
 
   $view.innerHTML = `
   <div class="page">
     <div class="phead"><div><h1>${esc(t("admin_title"))}</h1><p class="muted">${esc(t("admin_intro"))}</p></div></div>
     <div class="grid">
+      ${launch}
 
       <section class="card span-12" aria-labelledby="amail">
         <h2 id="amail">${esc(L("Službena e-pošta teretane", "Official gym email"))}</h2>
@@ -1253,6 +1255,7 @@ async function viewAdmin() {
   };
 
   wireTripSettings();
+  wireLaunch();
   document.getElementById("save-pay").onclick = async () => {
     const raw = document.getElementById("pay").value.trim();
     const url = raw ? safeHttps(raw) : null;

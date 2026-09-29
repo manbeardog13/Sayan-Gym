@@ -55,8 +55,9 @@ Edited answers are re-learned automatically on the next question.
 
 ## 5. Give members passes
 
-Staff create passes in Supabase → Table Editor → `memberships` (pick user, plan, `ends_at`).
+Admins give and renew passes on **Front desk → Members and passes** (see section 15).
 The pass code appears as a QR on the member's dashboard; staff scan it on the Front desk screen.
+**Settings** opens with a **Ready to launch?** checklist of what is still missing.
 
 ## 6. Still worth asking the client
 
