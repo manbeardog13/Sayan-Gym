@@ -257,12 +257,13 @@ function restoreAuthFrame() {
   rise.appendChild(film);
 }
 
-async function startSplash(render) {
+// play = false skips the intro (visitors landing on the public page never need the film).
+async function startSplash(render, play = true) {
   const splash = document.getElementById('splash');
   const reduce = matchMedia('(prefers-reduced-motion: reduce)');
   let seen = false;
   try { seen = sessionStorage.getItem('sg.splash') === '1'; } catch (_) {}
-  if (!splash || seen || reduce.matches) { splash?.remove(); await render(); return; }
+  if (!splash || seen || !play || reduce.matches) { splash?.querySelector('video')?.removeAttribute('src'); splash?.remove(); await render(); return; }
   splashActive = true;
   const video = splash.querySelector('video');
   splash.hidden = false;

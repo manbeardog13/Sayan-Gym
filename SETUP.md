@@ -208,6 +208,8 @@ settings, the `return_codes` table and the `my_return_code` / `redeem_return_cod
 
 - **Front page:** visitors (and Google) land on the public gym page; signed-in members land on their
   dashboard; the installed app still opens on sign-in (`start_url` is `#/app`).
+  The intro film (1.7 MB) plays only when sign-in is the first screen, so a visitor's first load is
+  about 0.9 MB instead of 2.6 MB.
 - **Link previews** (WhatsApp, Instagram, Facebook, X) use `assets/og.jpg`, a branded card with the
   address and opening hours and no photo (the placeholder photos don't show this gym). If the hours
   change, update the card, the hours in `index.html` (`openingHoursSpecification`) and the Hours card.
