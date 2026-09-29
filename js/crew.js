@@ -380,7 +380,7 @@ async function viewTv() {
   };
   // the header (and its gradient) is hidden on the TV, so this copy carries its own
   const mark = WORDMARK.replace('id="wmg"', 'id="wmg-tv"').replace("url(#wmg)", "url(#wmg-tv)");
-  $view.innerHTML = `<div class="tv-wrap"><div class="tv-head">${mark}<span class="tv-clock" id="tv-clock"></span>
+  $view.innerHTML = `<div class="tv-wrap"><h1 class="sr-only">${esc(L("Saiyan Gym FITT — ekran u teretani", "Saiyan Gym FITT — gym screen"))}</h1><div class="tv-head">${mark}<span class="tv-clock" id="tv-clock"></span>
       <a class="btn btn-ghost btn-sm tv-exit" href="#/desk">${esc(L("Izlaz", "Exit"))}</a></div>
     <p class="small" id="tv-err" hidden>${esc(L("Nema veze — prikazujem zadnje podatke.", "No connection — showing the last data."))}</p>
     <div class="tv-grid" id="tv"></div></div>`;

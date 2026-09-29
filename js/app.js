@@ -719,7 +719,7 @@ async function viewLog() {
       const tg = targets[b.exercise_id];
       return `
       <div class="ex-block">
-        <header><h3 style="margin:0">${esc(nameOf(e))}</h3>
+        <header><h2 class="ex-name" style="margin:0">${esc(nameOf(e))}</h2>
           <span class="ex-tools"><button class="chip" data-plates="${bi}" type="button">${esc(L("Utezi", "Plates"))}</button>
           <button class="icon-btn btn-sm" data-rmb="${bi}" type="button" aria-label="${esc(L("Ukloni vježbu", "Remove exercise"))}">✕</button></span></header>
         ${tg ? `<div class="hint">${fmtDate(tg.last_date)}: ${fmtKg(tg.last_load)} × ${tg.last_reps} → ${fmtKg(tg.suggest_load)} × ${tg.suggest_reps} · ${esc(t("advice_" + tg.advice))}</div>` : ""}
