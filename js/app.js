@@ -1508,8 +1508,8 @@ function decorate() {
   });
 }
 
-// The app opens on sign-in; signed-in members land on their dashboard.
-// The public site stays reachable at #/site.
+// Visitors (and search engines) land on the public gym page; signed-in members land on
+// their dashboard. The installed app starts at #/app, so it still opens on sign-in.
 async function signOut() {
   await sb.auth.signOut();
   state.session = null; state.profile = null;
@@ -1531,7 +1531,7 @@ window.addEventListener("popstate", navigationMotion.onPop);
 async function route() {
   let h = location.hash.split("?")[0] || "#/";
   if (!ROUTES[h]) {
-    h = state.session ? "#/app" : "#/login";
+    h = state.session ? "#/app" : "#/site";
     history.replaceState(history.state, "", h);
   }
   const direction = navigationMotion.take();

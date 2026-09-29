@@ -203,3 +203,16 @@ settings, the `return_codes` table and the `my_return_code` / `redeem_return_cod
   happy customers, so the request never mentions the offer and nobody is filtered.
 - **Front desk → Return code:** type the code. It says whose it is and uses it once; a used
   code says when it was used. Apply the offer at the till as usual.
+
+## 17. Google and link previews
+
+- **Front page:** visitors (and Google) land on the public gym page; signed-in members land on their
+  dashboard; the installed app still opens on sign-in (`start_url` is `#/app`).
+- **Link previews** (WhatsApp, Instagram, Facebook, X) use `assets/og.jpg`, a branded card with the
+  address and opening hours and no photo (the placeholder photos don't show this gym). If the hours
+  change, update the card, the hours in `index.html` (`openingHoursSpecification`) and the Hours card.
+- **Google business details:** `index.html` carries schema.org `ExerciseGym` data (address, hours,
+  phone, map, Instagram). The Google Business Profile itself is still the main source for Maps.
+- **Sitemap:** `sitemap.xml`. Optional: add the site in Google Search Console and submit
+  `https://manbeardog13.github.io/Sayan-Gym/sitemap.xml`. A `robots.txt` would only work at the domain
+  root (`manbeardog13.github.io`), which this project site can't serve; none is needed to be indexed.
