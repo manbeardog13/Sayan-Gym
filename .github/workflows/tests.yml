@@ -1,0 +1,29 @@
+# Runs the repository's own checks on every pull request and on main.
+# Public repository, GitHub-hosted runner: no cost. Read-only token.
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Unit and shell tests
+        run: node --test tests/*.test.cjs

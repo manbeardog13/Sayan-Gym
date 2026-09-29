@@ -1,4 +1,17 @@
-# Member interface checks
+# Tests
+
+Run everything from the repository root (Node 20+, no install step):
+
+```sh
+node --test tests/*.test.cjs
+```
+
+GitHub Actions runs the same command on every pull request and on `main`
+(`.github/workflows/tests.yml`). `shell.test.cjs` guards the static shell: every page
+script exists, parses and is in the service worker's offline cache, and CDN scripts are
+version-pinned with an integrity hash.
+
+## Member interface checks
 
 Run from the repository root with Node:
 
