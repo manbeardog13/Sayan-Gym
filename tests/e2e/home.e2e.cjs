@@ -31,3 +31,22 @@ test("members-only pages still send visitors to sign-in", async () => {
 test("the installed app still starts on the members area", () => {
   assert.equal(JSON.parse(fs.readFileSync("manifest.webmanifest", "utf8")).start_url, "./#/app");
 });
+
+const FILM = "assets/saiyan-rise.mp4";
+test("a first-time visitor on the public page never downloads the intro film", async () => {
+  const { page: p, ctx } = await openApp(browser, srv.base, { route: "", signedOut: true, splash: true, wait: 3000 });
+  try {
+    assert.equal(new URL(p.url()).hash, "#/site");
+    assert.equal(p.requested.filter((u) => u.includes(FILM)).length, 0);
+    assert.equal(await p.locator("#splash").count(), 0);
+    assert.deepEqual(p.errs, []);
+  } finally { await ctx.close(); }
+});
+
+test("sign-in as the first screen still plays the intro film", async () => {
+  const { page: p, ctx } = await openApp(browser, srv.base, { route: "#/login", signedOut: true, splash: true, wait: 1500 });
+  try {
+    assert.ok(p.requested.some((u) => u.includes(FILM)), "film requested");
+    assert.deepEqual(p.errs, []);
+  } finally { await ctx.close(); }
+});

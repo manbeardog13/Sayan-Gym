@@ -27,22 +27,26 @@ async function serve() {
 
 const launch = () => chromium.launch();
 
-// opts: route, role (admin|coach|member), trip (""|off|none|used), theme, width, signedOut, csp
+// opts: route, role (admin|coach|member), trip (""|off|none|used), theme, width, signedOut, wait,
+// splash (true = first visit with motion allowed, so the intro film may play)
 async function openApp(browser, base, opts = {}) {
-  const { route = "#/app", role = "admin", trip = "", theme = "light", width = 390, signedOut = false, wait = 1400 } = opts;
-  const ctx = await browser.newContext({ viewport: { width, height: 900 }, serviceWorkers: "block", timezoneId: "Europe/Zagreb", colorScheme: theme, reducedMotion: "reduce", acceptDownloads: true });
-  await ctx.addInitScript(([role, trip, theme, so]) => {
+  const { route = "#/app", role = "admin", trip = "", theme = "light", width = 390, signedOut = false, wait = 1400, splash = false } = opts;
+  const ctx = await browser.newContext({ viewport: { width, height: 900 }, serviceWorkers: "block", timezoneId: "Europe/Zagreb", colorScheme: theme, reducedMotion: splash ? "no-preference" : "reduce", acceptDownloads: true });
+  await ctx.addInitScript(([role, trip, theme, so, sp]) => {
     window.__SG_MOCK = { signedOut: so };
     window.__csp = [];
     document.addEventListener("securitypolicyviolation", (e) => window.__csp.push(e.violatedDirective + " " + e.blockedURI));
     try {
       localStorage.setItem("sg_lang", "en"); localStorage.setItem("sg.theme", theme);
-      localStorage.setItem("mock_role", role); localStorage.setItem("mock_trip", trip); sessionStorage.setItem("sg.splash", "1");
+      localStorage.setItem("mock_role", role); localStorage.setItem("mock_trip", trip);
     } catch (e) {}
-  }, [role, trip, theme, signedOut]);
+    if (!sp) try { sessionStorage.setItem("sg.splash", "1"); } catch (e) {}
+  }, [role, trip, theme, signedOut, splash]);
   await ctx.route(/^https?:\/\/(?!127\.0\.0\.1)/, (r) => r.request().url().includes("@supabase/supabase-js")
     ? r.fulfill({ contentType: "text/javascript", body: MOCK }) : r.abort());
   const page = await ctx.newPage();
+  page.requested = [];
+  page.on("request", (r) => page.requested.push(r.url()));
   page.errs = [];
   page.on("pageerror", (e) => page.errs.push(e.message));
   page.on("dialog", (d) => d.accept());

@@ -1573,5 +1573,8 @@ async function route() {
     if (event === "SIGNED_OUT" && location.hash !== "#/login") { state.profile = null; location.hash = "#/login"; }
   });
   window.addEventListener("hashchange", route);
-  await startSplash(route);
+  // The intro film lands in the sign-in card, so only play it when sign-in is the first screen.
+  // Visitors on the public page (tourists on mobile data) skip its 1.7 MB download.
+  const first = location.hash.split("?")[0];
+  await startSplash(route, !!state.session || first === "#/login" || PROTECTED.has(first));
 })();

@@ -1,5 +1,5 @@
 // Cache the app shell only. Supabase API calls always go to the network.
-const CACHE = "saiyan-v28-home";
+const CACHE = "saiyan-v29-light";
 const SHELL = ["./", "index.html", "css/asc.css", "css/saiyan.css", "js/boot-theme.js", "js/boot.js", "js/config.js", "js/i18n.js", "js/studio.js", "js/coach.js", "js/crew.js", "js/passes.js", "js/trip.js", "js/launch.js", "js/app.js", "js/member-ui.js", "icons/icon.svg", "manifest.webmanifest", "assets/hero.webp", "assets/log.webp", "assets/checkin.webp", "assets/squat.webp", "assets/aura-splash.jpg"];
 // The two pinned CDN scripts never change at these exact versions, so the app can still
 // open (and log sets) with no signal in the gym. Their SRI hashes still apply.
