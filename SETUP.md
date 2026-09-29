@@ -218,3 +218,34 @@ settings, the `return_codes` table and the `my_return_code` / `redeem_return_cod
 - **Sitemap:** `sitemap.xml`. Optional: add the site in Google Search Console and submit
   `https://manbeardog13.github.io/Sayan-Gym/sitemap.xml`. A `robots.txt` would only work at the domain
   root (`manbeardog13.github.io`), which this project site can't serve; none is needed to be indexed.
+
+## 18. Access audit
+
+`supabase/audit/access_audit.sql` checks who can read and change what. It is safe on the live
+project: two throwaway users and their data exist only inside one transaction that ends with an
+error, so nothing is kept. Paste it into the Supabase SQL editor and read the `RESULT` list.
+**Run it after every migration** that adds a table or a `security definer` function; a new
+function it doesn't know shows up as `NOT COVERED`.
+
+Result on 29 Sep 2026 (all 33 tables and 33 member-callable functions): no findings.
+- A signed-in member sees none of another member's workouts, sets, body metrics, consents,
+  visits, passes, profile, devices, return code, season or club entry, and can't write any of them.
+- A member can't make themselves admin (trigger `guard_role_change`), give themselves a pass, check
+  themselves in, edit settings, upload photos, or ring a PR bell or give kudos as someone else
+  (triggers fill in the signed-in member; the same goes for consents).
+- A visitor who isn't signed in reads nothing private; members' posts and the PR bell need sign-in.
+- Every staff- or admin-only function refuses a member. The rest return only the caller's own data
+  or anonymous totals (best times, occupancy, club board, standings).
+- All six Edge Functions check the caller: gym-wire, idea-agent and social-publish are admin only;
+  delete-account is self (or an admin for a member); push needs a member or the scheduler's key;
+  concierge is origin-checked and rate-limited. All are deployed with `verify_jwt`.
+- Storage: the `gallery` and `posts` buckets are public to read (they're shown on the site), and
+  only admins can upload or delete.
+
+Known and accepted:
+- The Supabase advisor warns about signed-in users calling `security definer` functions. Each one
+  checks the caller itself (see above).
+- "Leaked password protection" is off. The app has no passwords (Google and email links only), so
+  it has nothing to check.
+- An admin can't remove another member's PR bell. A bell has no free text and disappears after 14
+  days; ask if you want a remove button for staff.
