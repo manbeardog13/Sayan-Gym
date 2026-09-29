@@ -41,3 +41,22 @@ test('CDN scripts are pinned to a version and carry an integrity hash', () => {
     assert.ok(cdnPrefixes.some((p) => s.src.startsWith(p)), `${s.src} is cached for offline use by the service worker`);
   }
 });
+
+test('link previews and Google business details are complete and point at real files', () => {
+  const meta = (p) => (html.match(new RegExp(`<meta property="${p}" content="([^"]*)"`)) || [])[1];
+  const base = (html.match(/<link rel="canonical" href="([^"]+)"/) || [])[1];
+  assert.equal(base, 'https://manbeardog13.github.io/Sayan-Gym/');
+  for (const p of ['og:title', 'og:description', 'og:url', 'og:image']) assert.ok(meta(p), `${p} is set`);
+  assert.ok(meta('og:image').startsWith(base), 'og:image is absolute on this site');
+  assert.ok(fs.existsSync(meta('og:image').slice(base.length)), 'og:image file exists');
+  const ld = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
+  assert.equal(ld['@type'], 'ExerciseGym');
+  assert.equal(ld.address.streetAddress, 'Ćira Carića 1');
+  assert.deepEqual(ld.openingHoursSpecification.map((o) => `${o.opens}-${o.closes}`), ['06:00-22:00', '06:00-20:00']);
+  assert.ok(ld.image.startsWith(base) && fs.existsSync(ld.image.slice(base.length)));
+  const cfg = fs.readFileSync('js/config.js', 'utf8');
+  assert.ok(cfg.includes(`phone: "${ld.telephone}"`), 'telephone matches js/config.js');
+  const sitemap = fs.readFileSync('sitemap.xml', 'utf8');
+  assert.ok(sitemap.includes(`<loc>${base}</loc>`));
+  for (const loc of [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].slice(base.length)).filter(Boolean)) assert.ok(fs.existsSync(loc), `${loc} exists`);
+});

@@ -30,7 +30,7 @@ Built on the same architecture as ASC: a static, no-build PWA on GitHub Pages wi
 - Zrinko shapes an idea with a Gemini-powered interviewer; the finished brief goes to Nero,
   who builds the platform. Text and style changes ship on their own; bigger changes wait for Toni. See IDEAS_PIPELINE.md.
 
-The app opens on the sign-in screen; the public site is at `#/site`. Pinch zoom works; double-tap zoom is off so fast taps never zoom.
+Visitors land on the public gym page (`#/site`); signed-in members land on their dashboard, and the installed app opens on sign-in. Pinch zoom works; double-tap zoom is off so fast taps never zoom.
 
 ## How the "AI" works
 
