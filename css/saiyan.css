@@ -712,3 +712,11 @@ html.tv-mode .shell{max-width:none;padding:24px 32px}
 .launch-item.ok b{color:var(--ink-2);font-weight:600}
 .launch-item.unknown .launch-mark{color:var(--ink-2)}
 .launch-need{font:700 11px Inter;text-transform:uppercase;letter-spacing:.06em;color:var(--ink);background:var(--lava-tint);border-radius:999px;padding:2px 8px}
+
+/* Saiyan Wrapped */
+.wrapped-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:6px 0 16px}
+.wrapped-tile{display:grid;gap:4px}
+.wrapped-tile b{font:800 34px/1.1 Sora,sans-serif;color:var(--ink)}
+.wrapped .toggle-row{margin:0 0 10px}
+.wrapped-teaser{display:block;text-decoration:none;color:inherit;margin-top:14px}
+.wrapped-teaser h3{margin:0 0 4px}

@@ -17,7 +17,7 @@ async function audit(p) {
     .violations.map((v) => `${v.id} [${v.impact}] ${v.nodes.length}× ${v.nodes[0].target.join(" ")}`));
 }
 
-const ROUTES = [["#/site", true], ["#/login", true], ["#/app"], ["#/log"], ["#/progress"], ["#/profile"], ["#/crew"], ["#/desk"], ["#/admin"], ["#/tv"], ["#/studio?tab=idea"]];
+const ROUTES = [["#/site", true], ["#/login", true], ["#/app"], ["#/log"], ["#/progress"], ["#/profile"], ["#/crew"], ["#/desk"], ["#/admin"], ["#/tv"], ["#/studio?tab=idea"], ["#/wrapped"]];
 for (const theme of ["light", "dark"]) {
   for (const [route, signedOut = false] of ROUTES) {
     test(`${theme} ${route}${signedOut ? " (signed out)" : ""}`, async () => {

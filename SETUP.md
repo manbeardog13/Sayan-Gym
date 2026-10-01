@@ -249,3 +249,16 @@ Known and accepted:
   it has nothing to check.
 - An admin can't remove another member's PR bell. A bell has no free text and disappears after 14
   days; ask if you want a remove button for staff.
+
+## 19. Saiyan Wrapped
+
+A member's training year on one screen and one shareable picture: days trained, tonnes lifted
+("about 2 city buses"), heaviest lift, favourite exercise, favourite check-in hour, strongest month.
+- The dashboard shows a "Saiyan Wrapped" card from **1 December to 15 January** (Zagreb dates),
+  once the member has trained on at least 3 days that year.
+- `#/wrapped` works any time and shows "your year so far" (for example to preview it);
+  `#/wrapped?year=2026` picks a year.
+- Everything is worked out on the phone from the member's own workouts, sets and desk check-ins,
+  which they can already read. Nothing new is stored and nobody else's data is read. The picture is
+  made on the phone; the first name is on it only if ticked.
+- Comparisons: a city bus is about 12 t, a small car about 1.3 t (always "about").
